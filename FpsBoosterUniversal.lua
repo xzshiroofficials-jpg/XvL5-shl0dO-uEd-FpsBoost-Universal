@@ -1,3206 +1,1946 @@
-locall DISCORD_INVITE = "https://discord.gg/CYAmmsuRa"
-
-local HUDColors = {
-    WatermarkAccent = Color3.fromRGB(156, 125, 255), -- #9c7dff
-    TargetHUDAccent = Color3.fromRGB(156, 125, 255), -- #9c7dff
-    HUDBackground = Color3.fromRGB(94, 88, 115),     -- #5e5873
-    HUDOutline = Color3.fromRGB(94, 88, 115),        -- #5e5873
-    HUDTextColor = Color3.fromRGB(255, 255, 255),     -- #ffffff
-    VisualizerColor = Color3.fromRGB(156, 125, 255), -- #9c7dff
-    KeySystemAccent = Color3.fromRGB(156, 125, 255),
-    KeySystemBg = Color3.fromRGB(12, 12, 18)
+local RobloxServices = {
+    Players = game:GetService("Players"),
+    RunService = game:GetService("RunService"),
+    ReplicatedStorage = game:GetService("ReplicatedStorage"),
+    Workspace = game:GetService("Workspace"),
+    UserInput = game:GetService("UserInputService"),
+    Stats = game:GetService("Stats"),
+    HttpService = game:GetService("HttpService"),
 }
 
-local function copyToClipboard(text)
-    local setClipboard = setclipboard or writeclipboard or toclipboard or (Clipboard and Clipboard.set)
-    if setClipboard then
-        pcall(setClipboard, text)
+local LocalPlayer = RobloxServices.Players.LocalPlayer
+local CurrentCamera = RobloxServices.Workspace.CurrentCamera
+
+-- Helper to safely get GUI parent for CoreGui / PlayerGui
+local function getGuiParent()
+    local gethui = gethui or function()
+        local ok, cg = pcall(function() return game:GetService("CoreGui") end)
+        return (ok and cg) or LocalPlayer:FindFirstChildOfClass("PlayerGui")
+    end
+    return gethui()
+end
+
+-- Improved helper function to check if a character model belongs to a real human player
+local function isRealPlayer(model)
+    if not model or not model:IsA("Model") then return false end
+    
+    -- Direct player character check
+    if RobloxServices.Players:GetPlayerFromCharacter(model) then
         return true
     end
-    return false
-end
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Lighting = game:GetService("Lighting")
-local HttpService = game:GetService("HttpService")
-local UserInputService = game:GetService("UserInputService")
-local GuiService = game:GetService("GuiService")
-local Stats = game:GetService("Stats")
-local LocalPlayer = Players.LocalPlayer
-
-local table_clear = table.clear
-local table_find = table.find
-local table_insert = table.insert
-local math_min = math.min
-local math_clamp = math.clamp
-local math_deg = math.deg
-local math_rad = math.rad
-local os_clock = os.clock
-local vector3_new = Vector3.new
-local cframe_new = CFrame.new
-local cframe_lookAt = CFrame.lookAt
-
----------------------------------------------------------
--- 5-SECOND LOADING SYSTEM
----------------------------------------------------------
-local function showLoadingScreen()
-    local CoreGui = game:GetService("CoreGui")
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "FLSAKEN_Loader"
-    ScreenGui.DisplayOrder = 999999
-    pcall(function() ScreenGui.Parent = CoreGui end)
-    if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
-
-    local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.fromOffset(330, 110)
-    Frame.Position = UDim2.new(0.5, -165, 0.5, -55)
-    Frame.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
-    Frame.BorderSizePixel = 0
-    Frame.Parent = ScreenGui
-
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 3)
-    Corner.Parent = Frame
-
-    local Stroke = Instance.new("UIStroke")
-    Stroke.Color = Color3.fromRGB(94, 88, 115)
-    Stroke.Thickness = 1
-    Stroke.Parent = Frame
-
-    local TitleIcon = Instance.new("ImageLabel")
-    TitleIcon.Name = "TitleIcon"
-    TitleIcon.Size = UDim2.fromOffset(20, 20)
-    TitleIcon.Position = UDim2.new(0, 10, 0, 14)
-    TitleIcon.BackgroundTransparency = 1
-    TitleIcon.Image = "rbxassetid://71081229545579"
-    TitleIcon.Parent = Frame
-
-    local Title = Instance.new("TextLabel")
-    Title.Size = UDim2.new(1, -40, 0, 25)
-    Title.Position = UDim2.new(0, 35, 0, 12)
-    Title.BackgroundTransparency = 1
-    Title.Text = "FlsSaken||Official"
-    Title.TextColor3 = Color3.fromRGB(156, 125, 255)
-    Title.Font = Enum.Font.SourceSansBold
-    Title.TextSize = 18
-    Title.TextXAlignment = Enum.TextXAlignment.Left
-    Title.Parent = Frame
-
-    local Status = Instance.new("TextLabel")
-    Status.Size = UDim2.new(1, -20, 0, 20)
-    Status.Position = UDim2.new(0, 10, 0, 38)
-    Status.BackgroundTransparency = 1
-    Status.Text = "Initializing script..."
-    Status.TextColor3 = Color3.fromRGB(200, 200, 200)
-    Status.Font = Enum.Font.SourceSans
-    Status.TextSize = 13
-    Status.TextXAlignment = Enum.TextXAlignment.Left
-    Status.Parent = Frame
-
-    local BarBg = Instance.new("Frame")
-    BarBg.Size = UDim2.new(1, -20, 0, 8)
-    BarBg.Position = UDim2.new(0, 10, 0, 72)
-    BarBg.BackgroundColor3 = Color3.fromRGB(24, 24, 32)
-    BarBg.BorderSizePixel = 0
-    BarBg.Parent = Frame
-
-    local BarCorner = Instance.new("UICorner")
-    BarCorner.CornerRadius = UDim.new(0, 3)
-    BarCorner.Parent = BarBg
-
-    local BarFill = Instance.new("Frame")
-    BarFill.Size = UDim2.new(0, 0, 1, 0)
-    BarFill.BackgroundColor3 = Color3.fromRGB(156, 125, 255)
-    BarFill.BorderSizePixel = 0
-    BarFill.Parent = BarBg
-
-    local FillCorner = Instance.new("UICorner")
-    FillCorner.CornerRadius = UDim.new(0, 3)
-    FillCorner.Parent = BarFill
-
-    local startTime = os_clock()
-    local duration = 5.0
-
-    while os_clock() - startTime < duration do
-        local elapsed = os_clock() - startTime
-        local progress = math_clamp(elapsed / duration, 0, 1)
-        BarFill.Size = UDim2.new(progress, 0, 1, 0)
-        
-        if progress < 0.3 then
-            Status.Text = "Loading framework & assets..."
-        elseif progress < 0.7 then
-            Status.Text = "Caching entities & setting up hooks..."
-        else
-            Status.Text = "Finalizing configuration..."
-        end
-        task.wait()
-    end
-
-    BarFill.Size = UDim2.new(1, 0, 1, 0)
-    Status.Text = "Loaded successfully!"
-    task.wait(0.3)
-    ScreenGui:Destroy()
-end
-
-showLoadingScreen()
-
----------------------------------------------------------
--- SCRIPT LOGIC
----------------------------------------------------------
-local Options, Toggles, Window, Library, ThemeManager, SaveManager
-local Tabs
-local killerHighlights = {}
-local survivorHighlights = {}
-local itemHighlights = {}
-local generatorHighlights = {}
-local trapHighlights = {}
-local generatorPercentGuis = {}
-
-local VirtualInputManager = nil
-pcall(function()
-    VirtualInputManager = game:GetService("VirtualInputManager")
-end)
-
-local visualKillerHighlightEnabled = false
-local visualKillerOutlineTransparency = 0.5
-local visualKillerFillTransparency = 0.85
-local killerHighlightColor = Color3.fromRGB(255, 0, 0)
-
-local visualSurvivorHighlightEnabled = false
-local visualSurvivorOutlineTransparency = 0.5
-local visualSurvivorFillTransparency = 0.85
-local survivorHighlightColor = Color3.fromRGB(0, 255, 0)
-
-local visualItemsHighlightEnabled = false
-local visualItemsOutlineTransparency = 0.5
-local visualItemsFillTransparency = 0.85
-local itemsHighlightColor = Color3.fromRGB(255, 255, 0)
-
-local visualGeneratorsHighlightEnabled = false
-local visualGeneratorsShowPercentageEnabled = false
-local visualGeneratorsOutlineTransparency = 0.5
-local visualGeneratorsFillTransparency = 0.85
-local generatorsHighlightColor = Color3.fromRGB(0, 255, 255)
-
-local visualTrapsHighlightEnabled = false
-local visualTrapsOutlineTransparency = 0.5
-local visualTrapsFillTransparency = 0.85
-local trapsHighlightColor = Color3.fromRGB(255, 100, 0)
-
-local autoM1Enabled = false
-local autoM1Range = 5
-local autoM1ConeAngle = 90
-local autoM1AimDuration = 1.5
-local autoM1MaxPrediction = 0.2
-local autoM1AimSpeed = 15
-local autoM1VisualizerEnabled = true
-
-local leftConeLine = nil
-local rightConeLine = nil
-local autoM1Circle = nil
-
-local autoM1AimbotActive = false
-local autoM1AimbotStart = 0
-local autoM1AimbotTarget = nil
-
-local projectileAimbotActive = false
-local projectileAimbotTarget = nil
-local projectileAimStartTime = 0
-local previousCooldownStates = {}
-local currentActiveSkill = nil
-
-local allowedSurvivorNames = {
-    "guest1337", "guest 1337", "chance", "builderman", "veeronica", 
-    "noob", "shedletsky", "twotime", "two time", "dusekkar", 
-    "007n7", "oo7n7", "jane doe", "janedoe", "elliot"
-}
-
-local skillConfigs = {
-    ["Mass Infection"] = {
-        enabled = true,
-        duration = 1.25,
-        speed = 35,
-        prediction = 0.2
-    },
-    ["Entanglement"] = {
-        enabled = true,
-        duration = 0.65,
-        speed = 35,
-        prediction = 0.2
-    },
-    ["Corrupt Energy"] = {
-        enabled = true,
-        duration = 0.65,
-        speed = 35,
-        prediction = 0.2
-    }
-}
-
-local guiCornerRadius = 8
-local cornerConnection = nil
-
-local staminaEnabled = false
-local MAX_STAMINA = 100
-local MIN_STAMINA = -20
-local STAMINA_GAIN = 100
-local STAMINA_LOSS = 5
-local SPRINT_SPEED = 40
-local INF_STAMINA = true
-
-local fullBrightEnabled = false
-local originalLightingSettings = {
-    Ambient = Lighting.Ambient,
-    OutdoorAmbient = Lighting.OutdoorAmbient,
-    ColorShift_Bottom = Lighting.ColorShift_Bottom,
-    ColorShift_Top = Lighting.ColorShift_Top,
-    ExposureCompensation = Lighting.ExposureCompensation,
-    GlobalShadows = Lighting.GlobalShadows,
-    Brightness = Lighting.Brightness,
-}
-
-local LOBBY_POSITION = vector3_new(0, 5, 0)
-local LOBBY_RADIUS = 220
-local isUnloaded = false
-local autoM1Connection = nil
-local heartbeatAlignmentConnection = nil
-
-local killerNameCheckCache = {}
-local killerHumanoidCache = {}
-local killerHrpCache = {}
-local survivorHumanoidCache = {}
-local survivorHrpCache = {}
-
-local cachedItems = {}
-local cachedGenerators = {}
-local cachedTraps = {}
-local cacheConnections = {}
-
-local cachedHelpless = false
-local lastHelplessCheck = 0
-local HELPLESS_CACHE_INTERVAL = 0.5 
-
-local cachedM1CD = false
-local lastM1CDCheck = 0
-
-local cachedSprintingModule = nil
-
-local HUDRefs = {}
-
-local function createInGameHUDOverlay()
-    local CoreGui = game:GetService("CoreGui")
-    local existingHUD = CoreGui:FindFirstChild("FLSHUDOverlay") or (LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("FLSHUDOverlay"))
-    if existingHUD then existingHUD:Destroy() end
-
-    local HUDGui = Instance.new("ScreenGui")
-    HUDGui.Name = "FLSHUDOverlay"
-    HUDGui.ResetOnSpawn = false
-    HUDGui.DisplayOrder = 1000000
-    pcall(function() HUDGui.Parent = CoreGui end)
-    if not HUDGui.Parent then HUDGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
-
-    local WatermarkFrame = Instance.new("Frame")
-    WatermarkFrame.Name = "WatermarkFrame"
-    WatermarkFrame.Size = UDim2.new(0, 360, 0, 30)
-    WatermarkFrame.Position = UDim2.new(0, 15, 0, 15)
-    WatermarkFrame.BackgroundColor3 = HUDColors.HUDBackground
-    WatermarkFrame.BorderSizePixel = 0
-    WatermarkFrame.Parent = HUDGui
-    HUDRefs.WatermarkFrame = WatermarkFrame
-
-    local WMCorner = Instance.new("UICorner")
-    WMCorner.CornerRadius = UDim.new(0, 6)
-    WMCorner.Parent = WatermarkFrame
-
-    local WMStroke = Instance.new("UIStroke")
-    WMStroke.Color = HUDColors.HUDOutline
-    WMStroke.Thickness = 1
-    WMStroke.Parent = WatermarkFrame
-    HUDRefs.WMStroke = WMStroke
-
-    local WMAccent = Instance.new("Frame")
-    WMAccent.Name = "WMAccent"
-    WMAccent.Size = UDim2.new(0, 3, 1, 0)
-    WMAccent.BackgroundColor3 = HUDColors.WatermarkAccent
-    WMAccent.BorderSizePixel = 0
-    WMAccent.Parent = WatermarkFrame
-    HUDRefs.WMAccent = WMAccent
-
-    local WMAccentCorner = Instance.new("UICorner")
-    WMAccentCorner.CornerRadius = UDim.new(0, 6)
-    WMAccentCorner.Parent = WMAccent
-
-    local WMIcon = Instance.new("ImageLabel")
-    WMIcon.Name = "WMIcon"
-    WMIcon.Size = UDim2.fromOffset(18, 18)
-    WMIcon.Position = UDim2.new(0, 8, 0.5, -9)
-    WMIcon.BackgroundTransparency = 1
-    WMIcon.Image = "rbxassetid://71081229545579"
-    WMIcon.Parent = WatermarkFrame
-
-    local WMLabel = Instance.new("TextLabel")
-    WMLabel.Name = "WMLabel"
-    WMLabel.Size = UDim2.new(1, -36, 1, 0)
-    WMLabel.Position = UDim2.new(0, 32, 0, 0)
-    WMLabel.BackgroundTransparency = 1
-    WMLabel.Text = "FlsSaken||Official  |  FPS: --  |  Ping: --ms  |  User: " .. LocalPlayer.Name
-    WMLabel.TextColor3 = HUDColors.HUDTextColor
-    WMLabel.TextSize = 12
-    WMLabel.Font = Enum.Font.SourceSansBold
-    WMLabel.TextXAlignment = Enum.TextXAlignment.Left
-    WMLabel.Parent = WatermarkFrame
-    HUDRefs.WMLabel = WMLabel
-
-    local TargetHUD = Instance.new("Frame")
-    TargetHUD.Name = "TargetHUD"
-    TargetHUD.Size = UDim2.new(0, 240, 0, 52)
-    TargetHUD.Position = UDim2.new(0.5, -120, 0.82, 0)
-    TargetHUD.BackgroundColor3 = HUDColors.HUDBackground
-    TargetHUD.BorderSizePixel = 0
-    TargetHUD.Visible = false
-    TargetHUD.Parent = HUDGui
-    HUDRefs.TargetHUD = TargetHUD
-
-    local TargetCorner = Instance.new("UICorner")
-    TargetCorner.CornerRadius = UDim.new(0, 8)
-    TargetCorner.Parent = TargetHUD
-
-    local TargetStroke = Instance.new("UIStroke")
-    TargetStroke.Name = "TargetStroke"
-    TargetStroke.Color = HUDColors.HUDOutline
-    TargetStroke.Thickness = 1.5
-    TargetStroke.Parent = TargetHUD
-    HUDRefs.TargetStroke = TargetStroke
-
-    local TargetTitle = Instance.new("TextLabel")
-    TargetTitle.Name = "TargetTitle"
-    TargetTitle.Size = UDim2.new(1, -10, 0, 16)
-    TargetTitle.Position = UDim2.new(0, 10, 0, 5)
-    TargetTitle.BackgroundTransparency = 1
-    TargetTitle.Text = "TARGET LOCK: NONE"
-    TargetTitle.TextColor3 = HUDColors.TargetHUDAccent
-    TargetTitle.TextSize = 11
-    TargetTitle.Font = Enum.Font.SourceSansBold
-    TargetTitle.TextXAlignment = Enum.TextXAlignment.Left
-    TargetTitle.Parent = TargetHUD
-    HUDRefs.TargetTitle = TargetTitle
-
-    local TargetInfo = Instance.new("TextLabel")
-    TargetInfo.Name = "TargetInfo"
-    TargetInfo.Size = UDim2.new(1, -10, 0, 20)
-    TargetInfo.Position = UDim2.new(0, 10, 0, 24)
-    TargetInfo.BackgroundTransparency = 1
-    TargetInfo.Text = "Health: 100%  |  Distance: 0m"
-    TargetInfo.TextColor3 = HUDColors.HUDTextColor
-    TargetInfo.TextSize = 12
-    TargetInfo.Font = Enum.Font.SourceSans
-    TargetInfo.TextXAlignment = Enum.TextXAlignment.Left
-    TargetInfo.Parent = TargetHUD
-    HUDRefs.TargetInfo = TargetInfo
-
-    local lastFpsTime = os_clock()
-    local frameCount = 0
-    local currentFps = 60
-
-    RunService.RenderStepped:Connect(function()
-        if isUnloaded then HUDGui:Destroy() return end
-        frameCount = frameCount + 1
-        local now = os_clock()
-        if now - lastFpsTime >= 0.5 then
-            currentFps = math.floor(frameCount / (now - lastFpsTime))
-            frameCount = 0
-            lastFpsTime = now
-            
-            local ping = 0
-            pcall(function()
-                ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
-            end)
-            
-            WMLabel.Text = string.format("FlsSaken||Official  |  FPS: %d  |  Ping: %dms  |  User: %s", currentFps, ping, LocalPlayer.Name)
-        end
-
-        local activeTarget = autoM1AimbotTarget or projectileAimbotTarget
-        if activeTarget and activeTarget.Parent then
-            if not TargetHUD.Visible then
-                TargetHUD.Visible = true
-                TweenService:Create(TargetHUD, TweenInfo.new(0.2), { Size = UDim2.new(0, 240, 0, 52) }):Play()
-            end
-            local targetName = activeTarget.Name
-            local player = Players:GetPlayerFromCharacter(activeTarget)
-            if player then targetName = player.DisplayName end
-
-            local hum = activeTarget:FindFirstChildWhichIsA("Humanoid")
-            local thrp = activeTarget:FindFirstChild("HumanoidRootPart")
-            local char, _, hrp = getCharacterInfo()
-
-            local hpPct = hum and math.floor((hum.Health / math.max(hum.MaxHealth, 1)) * 100) or 0
-            local dist = (hrp and thrp) and math.floor((thrp.Position - hrp.Position).Magnitude) or 0
-
-            TargetTitle.Text = "TARGET LOCK: " .. targetName:upper()
-            TargetInfo.Text = string.format("Health: %d%%  |  Distance: %dm", hpPct, dist)
-        else
-            TargetHUD.Visible = false
-        end
-    end)
-end
-
-task.spawn(createInGameHUDOverlay)
-
-local function trackCacheConnections(conn)
-    table_insert(cacheConnections, conn)
-end
-
-local function disconnectCacheConnections()
-    for _, conn in ipairs(cacheConnections) do
-        pcall(function() conn:Disconnect() end)
-    end
-    table_clear(cacheConnections)
-end
-
-local function isItemValid(child)
-    if child:IsA("Tool") or child:IsA("Model") then
-        local lowerName = child.Name:lower()
-        if lowerName:find("medkit") or lowerName:find("cola") then
+    -- Fallback scan against connected real players
+    for _, plr in ipairs(RobloxServices.Players:GetPlayers()) do
+        if plr.Character == model or plr.Name == model.Name or plr.DisplayName == model.Name then
             return true
         end
     end
     return false
 end
 
-local function isGeneratorValid(child)
-    return child.Name == "Generator" and child:IsA("Model")
+-- Helper to check if an instance belongs to an Accessory/Hat
+local function isAccessory(inst)
+    if not inst then return false end
+    return inst:FindFirstAncestorOfClass("Accessory") ~= nil 
+        or inst:FindFirstAncestorOfClass("Accoutrement") ~= nil
 end
 
-local function getTrapCategory(nameLower)
-    if nameLower:find("tripwire") or nameLower:find("trip wire") then
-        return "Tripwires"
-    elseif nameLower:find("subspace") or nameLower:find("tripmine") then
-        return "Subspace Tripmine"
-    elseif nameLower:find("footprint") or nameLower:find("digital") then
-        return "Digital Footprints"
-    elseif nameLower:find("seeker") then
-        return "Seekers"
-    elseif nameLower:find("bulb") then
-        return "Lightbulbs"
-    elseif nameLower:find("stigmatize") then
-        return "Stigmatize"
+-- Helper to get team folder
+local function getTeamFolder(name)
+    local root = RobloxServices.Workspace:FindFirstChild("Players")
+    return root and root:FindFirstChild(name)
+end
+
+-- ──────────────────────────────────────────────────
+--  SHARED RF DISPATCHER SYSTEM
+-- ──────────────────────────────────────────────────
+local rfDispatch = {
+    hooks = {},
+    installed = false,
+    originalCallback = nil
+}
+
+function rfDispatch:register(id, callback)
+    self.hooks[id] = callback
+end
+
+function rfDispatch:install(remoteFunction)
+    if self.installed or not remoteFunction then return end
+    
+    if typeof(getcallbackvalue) == "function" then
+        pcall(function()
+            self.originalCallback = getcallbackvalue(remoteFunction, "OnClientInvoke")
+        end)
+    else
+        self.originalCallback = remoteFunction.OnClientInvoke
+    end
+
+    remoteFunction.OnClientInvoke = function(requestName, ...)
+        for id, hookFunc in pairs(self.hooks) do
+            local success, result = pcall(hookFunc, requestName, ...)
+            if success and result ~= nil then
+                return result
+            end
+        end
+        
+        if self.originalCallback then
+            return self.originalCallback(requestName, ...)
+        end
+    end
+    self.installed = true
+end
+
+function rfDispatch:uninstall(remoteFunction)
+    if not self.installed then return end
+    if remoteFunction and self.originalCallback then
+        pcall(function()
+            remoteFunction.OnClientInvoke = self.originalCallback
+        end)
+    end
+    self.hooks = {}
+    self.originalCallback = nil
+    self.installed = false
+end
+
+-- ──────────────────────────────────────────────────
+--  CONFIG PERSISTENCE SYSTEM
+-- ──────────────────────────────────────────────────
+local CONFIG_FOLDER = "Dumsekkah"
+local CONFIG_FILE = "Dumsekkah/config.json"
+
+local function safeWriteFile(path, contents)
+    if typeof(writefile) == "function" then
+        pcall(writefile, path, contents)
+    end
+end
+
+local function safeReadFile(path)
+    if typeof(readfile) == "function" then
+        local ok, result = pcall(readfile, path)
+        if ok then return result end
     end
     return nil
 end
 
-local function isTrapValid(child)
-    local trapCategory = nil
-    
-    if child:IsA("Model") then
-        trapCategory = getTrapCategory(child.Name:lower())
-    elseif child:IsA("BasePart") then
-        local parent = child.Parent
-        if parent and parent:IsA("Model") then
-            trapCategory = getTrapCategory(parent.Name:lower())
-        end
-        if not trapCategory then
-            trapCategory = getTrapCategory(child.Name:lower())
-        end
-    end
-    
-    if not trapCategory then
-        return false
-    end
-    
-    if Options and Options.TrapFilter then
-        local enabledTraps = Options.TrapFilter.Value
-        if type(enabledTraps) == "table" then
-            return enabledTraps[trapCategory] == true
-        end
-    end
-    
-    return true
-end
-
-local function initialCacheScan()
-    table_clear(cachedItems)
-    table_clear(cachedGenerators)
-    table_clear(cachedTraps)
-
-    local function scan(parent)
-        if not parent or parent == Workspace.Terrain then return end
-        for _, child in ipairs(parent:GetChildren()) do
-            if isUnloaded then return end
-            if isItemValid(child) then
-                table_insert(cachedItems, child)
-            elseif isGeneratorValid(child) then
-                table_insert(cachedGenerators, child)
-            elseif isTrapValid(child) then
-                table_insert(cachedTraps, child)
-            end
-            
-            if child:IsA("Folder") or child.Name == "Map" or child.Name == "Arena" or child.Name == "Ingame" then
-                scan(child)
-            end
-        end
-    end
-
-    for _, child in ipairs(Workspace:GetChildren()) do
-        if child.Name ~= "Players" and child.Name ~= "Killers" and child ~= LocalPlayer.Character and child ~= Workspace.Terrain then
-            if isItemValid(child) then
-                table_insert(cachedItems, child)
-            elseif isGeneratorValid(child) then
-                table_insert(cachedGenerators, child)
-            elseif isTrapValid(child) then
-                table_insert(cachedTraps, child)
-            end
-            if child:IsA("Folder") or child.Name == "Map" or child.Name == "Arena" then
-                scan(child)
-            end
+local function safeMakeFolder(folder)
+    if typeof(makefolder) == "function" and typeof(isfolder) == "function" then
+        if not isfolder(folder) then
+            pcall(makefolder, folder)
         end
     end
 end
 
-local function setupCacheListeners()
-    local addedConn = Workspace.DescendantAdded:Connect(function(child)
-        if isUnloaded then return end
-        task.defer(function()
-            if isUnloaded or not child:IsDescendantOf(Workspace) then return end
-            if child == Workspace.Terrain then return end
-            
-            if isItemValid(child) then
-                if not table_find(cachedItems, child) then
-                    table_insert(cachedItems, child)
-                end
-            elseif isGeneratorValid(child) then
-                if not table_find(cachedGenerators, child) then
-                    table_insert(cachedGenerators, child)
-                end
-            elseif isTrapValid(child) then
-                if not table_find(cachedTraps, child) then
-                    table_insert(cachedTraps, child)
-                end
-            end
-        end)
-    end)
-    trackCacheConnections(addedConn)
+-- Config State Variables
+local stam = {
+    on      = false,
+    loss    = 10,
+    gain    = 20,
+    max     = 100,
+    current = 100,
+    noLoss  = false,
+    thread  = nil,
+}
 
-    local removedConn = Workspace.DescendantRemoving:Connect(function(child)
-        local itemIdx = table_find(cachedItems, child)
-        if itemIdx then
-            table.remove(cachedItems, itemIdx)
-        end
-        local genIdx = table_find(cachedGenerators, child)
-        if genIdx then
-            table.remove(cachedGenerators, genIdx)
-        end
-        local trapIdx = table_find(cachedTraps, child)
-        if trapIdx then
-            table.remove(cachedTraps, trapIdx)
-        end
-    end)
-    trackCacheConnections(removedConn)
-end
+local speedHack = { on = false, speed = 30, thread = nil, lastApplied = 0 }
 
-local function isItemEquipped(item)
-    if item:IsA("Tool") then
-        local parent = item.Parent
-        if parent and parent:FindFirstChildWhichIsA("Humanoid") then
-            return true
-        end
-    end
-    return false
-end
+local fpsBooster_enabled = false
+local originalVisualStates = {}
+local fpsBoosterConnection = nil
+local fpsQueue = {}
+local isProcessingFps = false
 
-local function safeConnect(button, eventName, callback)
-    local event = nil
-    pcall(function()
-        event = button[eventName]
-    end)
-    if event and type(event) == "userdata" and type(event.Connect) == "function" then
-        pcall(function()
-            event:Connect(callback)
-        end)
-    end
-end
+local killerVisualsEnabled = true
+local killerNameLabelsEnabled = true
+local killerIgnoreNPCs = true
+local killerHighlightRate = 0.85
+local killerScanRate = 0.5
+local killerScanThread = nil
+local killerHighlights = {}
 
-function getCharacterInfo()
-    local char = LocalPlayer.Character
-    if not char then return nil, nil, nil end
-    local hum = char:FindFirstChildWhichIsA("Humanoid")
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    return char, hum, hrp
-end
+local plasma_enabled               = false
+local plasma_ignoreNPCs            = true
+local plasma_targetSelectionMode   = "Nearest"
+local plasma_aimOffset             = 0.0
+local plasma_prediction            = 0.12
+local plasma_predictionSpeed       = 10.0
+local plasma_targetType            = "Killers"
+local plasma_throughWalls          = false
+local plasma_pingDetection         = true
 
-local function isLocalPlayerSurvivor()
-    local char = LocalPlayer.Character
-    if not char then return false end
-    
-    local isKillerAttr = char:GetAttribute("Role") == "Killer" 
-        or char:GetAttribute("role") == "Killer" 
-        or char:GetAttribute("IsKiller") == true 
-        or char:GetAttribute("isKiller") == true
-    
-    return not isKillerAttr
-end
+-- Killer Ability Configs
+local killerAutoDetectAbilities = true
 
-local function checkHelplessStatus()
-    local now = os_clock()
-    if now - lastHelplessCheck < HELPLESS_CACHE_INTERVAL then
-        return cachedHelpless
-    end
-    lastHelplessCheck = now
+local massInfection = {
+    enabled = true,
+    duration = 1.45,
+    aimDuration = 0.50,
+    spinSpeed = 45,
+    keybind = Enum.KeyCode.E,
+    isSpinning = false,
+}
 
-    local character = LocalPlayer.Character
-    if not character then 
-        cachedHelpless = false
-        return false 
-    end
+local entanglement = {
+    enabled = true,
+    duration = 0.40,
+    aimDuration = 0.50,
+    spinSpeed = 45,
+    keybind = Enum.KeyCode.R,
+    isSpinning = false,
+}
 
-    for name, value in pairs(character:GetAttributes()) do
-        if name:lower():find("helpless") then
-            if value == true or value == "Helpless" or (type(value) == "number" and value > 0) then
-                cachedHelpless = true
-                return true
-            end
-        end
-    end
+-- Auto-Gen Flow Game Config
+local flow = {
+    on = false,
+    nodeDelay = 0.04,
+    lineDelay = 0.60
+}
 
-    for _, child in ipairs(character:GetChildren()) do
-        if child.Name:lower():find("helpless") then
-            if child:IsA("ValueBase") then
-                if child.Value == true or child.Value == 1 or (type(child.Value) == "number" and child.Value > 0) then
-                    cachedHelpless = true
-                    return true
-                end
-            else
-                cachedHelpless = true
-                return true
-            end
-        end
-    end
+local targetBoxEnabled             = false
+local sphere_visualsEnabled        = true
+local sphere_size                  = 1.0
+local sphere_transparency          = 0.85
+local sphere_material              = Enum.Material.SmoothPlastic
+local sphere_color                 = Color3.fromHex("#6366F1")
+local cylinder_visualsEnabled      = true
+local cylinder_thickness           = 0.2
 
-    local statusFolders = {
-        character:FindFirstChild("StatusEffects"),
-        character:FindFirstChild("Status"),
-        character:FindFirstChild("Effects"),
-        LocalPlayer:FindFirstChild("StatusEffects"),
-        LocalPlayer:FindFirstChild("Status"),
-        LocalPlayer:FindFirstChild("Effects")
+local function saveConfig()
+    safeMakeFolder(CONFIG_FOLDER)
+    local data = {
+        stam_on = stam.on,
+        stam_noLoss = stam.noLoss,
+        stam_loss = stam.loss,
+        stam_gain = stam.gain,
+        stam_max = stam.max,
+        stam_current = stam.current,
+
+        speed_on = speedHack.on,
+        speed_speed = speedHack.speed,
+
+        fpsBooster_enabled = fpsBooster_enabled,
+
+        killerVisualsEnabled = killerVisualsEnabled,
+        killerNameLabelsEnabled = killerNameLabelsEnabled,
+        killerIgnoreNPCs = killerIgnoreNPCs,
+        killerHighlightRate = killerHighlightRate,
+        killerScanRate = killerScanRate,
+
+        plasma_enabled = plasma_enabled,
+        plasma_ignoreNPCs = plasma_ignoreNPCs,
+        plasma_targetSelectionMode = plasma_targetSelectionMode,
+        plasma_aimOffset = plasma_aimOffset,
+        plasma_prediction = plasma_prediction,
+        plasma_predictionSpeed = plasma_predictionSpeed,
+        plasma_targetType = plasma_targetType,
+        plasma_throughWalls = plasma_throughWalls,
+        plasma_pingDetection = plasma_pingDetection,
+
+        killerAutoDetectAbilities = killerAutoDetectAbilities,
+
+        massInfection_enabled = massInfection.enabled,
+        massInfection_duration = massInfection.duration,
+        massInfection_aimDuration = massInfection.aimDuration,
+        massInfection_spinSpeed = massInfection.spinSpeed,
+
+        entanglement_enabled = entanglement.enabled,
+        entanglement_duration = entanglement.duration,
+        entanglement_aimDuration = entanglement.aimDuration,
+        entanglement_spinSpeed = entanglement.spinSpeed,
+
+        flow_on = flow.on,
+        flow_nodeDelay = flow.nodeDelay,
+        flow_lineDelay = flow.lineDelay,
+
+        targetBoxEnabled = targetBoxEnabled,
+
+        sphere_visualsEnabled = sphere_visualsEnabled,
+        sphere_size = sphere_size,
+        sphere_transparency = sphere_transparency,
+        sphere_material = sphere_material.Name,
+        sphere_color = sphere_color:ToHex(),
+        cylinder_visualsEnabled = cylinder_visualsEnabled,
+        cylinder_thickness = cylinder_thickness,
     }
 
-    for _, statusFolder in ipairs(statusFolders) do
-        if statusFolder then
-            for _, child in ipairs(statusFolder:GetChildren()) do
-                if child.Name:lower():find("helpless") then
-                    if child:IsA("ValueBase") then
-                        if child.Value == true or child.Value == 1 or (type(child.Value) == "number" and child.Value > 0) then
-                            cachedHelpless = true
-                            return true
-                        end
-                    else
-                        cachedHelpless = true
-                        return true
-                    end
-                end
-            end
-        end
+    local ok, json = pcall(function() return RobloxServices.HttpService:JSONEncode(data) end)
+    if ok and json then
+        safeWriteFile(CONFIG_FILE, json)
     end
-
-    local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
-    if playerGui then
-        local mainUI = playerGui:FindFirstChild("MainUI") or playerGui:FindFirstChild("Main")
-        if mainUI and mainUI.Enabled then
-            for _, child in ipairs(mainUI:GetChildren()) do
-                if child.Name:lower():find("helpless") and child.Visible then
-                    cachedHelpless = true
-                    return true
-                end
-                if child.Name == "Status" or child.Name == "Effects" or child.Name == "StatusEffects" then
-                    for _, subChild in ipairs(child:GetChildren()) do
-                        if subChild.Name:lower():find("helpless") and (subChild:IsA("ValueBase") or subChild.Visible) then
-                            cachedHelpless = true
-                            return true
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    cachedHelpless = false
-    return false
 end
 
-local isCurrentlyInMatch = false
-local lastInMatchCheck = 0
-local IN_MATCH_CHECK_INTERVAL = 0.5
+local function loadConfig()
+    local contents = safeReadFile(CONFIG_FILE)
+    if not contents then return end
 
-local function updateInMatchCache()
+    local ok, data = pcall(function() return RobloxServices.HttpService:JSONDecode(contents) end)
+    if not ok or type(data) ~= "table" then return end
+
+    if data.stam_on ~= nil then stam.on = data.stam_on end
+    if data.stam_noLoss ~= nil then stam.noLoss = data.stam_noLoss end
+    if data.stam_loss ~= nil then stam.loss = data.stam_loss end
+    if data.stam_gain ~= nil then stam.gain = data.stam_gain end
+    if data.stam_max ~= nil then stam.max = data.stam_max end
+    if data.stam_current ~= nil then stam.current = data.stam_current end
+
+    if data.speed_on ~= nil then speedHack.on = data.speed_on end
+    if data.speed_speed ~= nil then speedHack.speed = data.speed_speed end
+
+    if data.fpsBooster_enabled ~= nil then fpsBooster_enabled = data.fpsBooster_enabled end
+
+    if data.killerVisualsEnabled ~= nil then killerVisualsEnabled = data.killerVisualsEnabled end
+    if data.killerNameLabelsEnabled ~= nil then killerNameLabelsEnabled = data.killerNameLabelsEnabled end
+    if data.killerIgnoreNPCs ~= nil then killerIgnoreNPCs = data.killerIgnoreNPCs end
+    if data.killerHighlightRate ~= nil then killerHighlightRate = data.killerHighlightRate end
+    if data.killerScanRate ~= nil then killerScanRate = data.killerScanRate end
+
+    if data.plasma_enabled ~= nil then plasma_enabled = data.plasma_enabled end
+    if data.plasma_ignoreNPCs ~= nil then plasma_ignoreNPCs = data.plasma_ignoreNPCs end
+    if data.plasma_targetSelectionMode ~= nil then plasma_targetSelectionMode = data.plasma_targetSelectionMode end
+    if data.plasma_aimOffset ~= nil then plasma_aimOffset = data.plasma_aimOffset end
+    if data.plasma_prediction ~= nil then plasma_prediction = data.plasma_prediction end
+    if data.plasma_predictionSpeed ~= nil then plasma_predictionSpeed = data.plasma_predictionSpeed end
+    if data.plasma_targetType ~= nil then plasma_targetType = data.plasma_targetType end
+    if data.plasma_throughWalls ~= nil then plasma_throughWalls = data.plasma_throughWalls end
+    if data.plasma_pingDetection ~= nil then plasma_pingDetection = data.plasma_pingDetection end
+
+    if data.killerAutoDetectAbilities ~= nil then killerAutoDetectAbilities = data.killerAutoDetectAbilities end
+
+    if data.massInfection_enabled ~= nil then massInfection.enabled = data.massInfection_enabled end
+    if data.massInfection_duration ~= nil then massInfection.duration = data.massInfection_duration end
+    if data.massInfection_aimDuration ~= nil then massInfection.aimDuration = data.massInfection_aimDuration end
+    if data.massInfection_spinSpeed ~= nil then massInfection.spinSpeed = data.massInfection_spinSpeed end
+
+    if data.entanglement_enabled ~= nil then entanglement.enabled = data.entanglement_enabled end
+    if data.entanglement_duration ~= nil then entanglement.duration = data.entanglement_duration end
+    if data.entanglement_aimDuration ~= nil then entanglement.aimDuration = data.entanglement_aimDuration end
+    if data.entanglement_spinSpeed ~= nil then entanglement.spinSpeed = data.entanglement_spinSpeed end
+
+    if data.flow_on ~= nil then flow.on = data.flow_on end
+    if data.flow_nodeDelay ~= nil then flow.nodeDelay = data.flow_nodeDelay end
+    if data.flow_lineDelay ~= nil then flow.lineDelay = data.flow_lineDelay end
+
+    if data.targetBoxEnabled ~= nil then targetBoxEnabled = data.targetBoxEnabled end
+
+    if data.sphere_visualsEnabled ~= nil then sphere_visualsEnabled = data.sphere_visualsEnabled end
+    if data.sphere_size ~= nil then sphere_size = data.sphere_size end
+    if data.sphere_transparency ~= nil then sphere_transparency = data.sphere_transparency end
+    if data.sphere_material ~= nil then
+        pcall(function() sphere_material = Enum.Material[data.sphere_material] end)
+    end
+    if data.sphere_color ~= nil then
+        pcall(function() sphere_color = Color3.fromHex(data.sphere_color) end)
+    end
+    if data.cylinder_visualsEnabled ~= nil then cylinder_visualsEnabled = data.cylinder_visualsEnabled end
+    if data.cylinder_thickness ~= nil then cylinder_thickness = data.cylinder_thickness end
+end
+
+-- Load configuration on startup
+loadConfig()
+
+-- ──────────────────────────────────────────────────
+--  AUTO-GEN (GENERATOR AUTO SOLVER LOGIC)
+-- ──────────────────────────────────────────────────
+local function flowKey(n) return n.row.."-"..n.col end
+
+local function flowNeighbour(r1,c1,r2,c2)
+    if r2==r1-1 and c2==c1 then return"up" end; if r2==r1+1 and c2==c1 then return"down" end
+    if r2==r1 and c2==c1-1 then return"left" end; if r2==r1 and c2==c1+1 then return"right" end; return false
+end
+
+local function flowOrder(path, endpoints)
+    if not path or #path == 0 then return path end
+    local lookup = {}
+    for _, n in ipairs(path) do lookup[flowKey(n)] = n end
+    local start
+    for _, ep in ipairs(endpoints or {}) do
+        for _, n in ipairs(path) do
+            if n.row == ep.row and n.col == ep.col then start = { row = ep.row, col = ep.col }; break end
+        end
+        if start then break end
+    end
+    if not start then
+        for _, n in ipairs(path) do
+            local nb = 0
+            for _, d in ipairs({{-1,0},{1,0},{0,-1},{0,1}}) do
+                if lookup[(n.row+d[1]).."-"..(n.col+d[2])] then nb += 1 end
+            end
+            if nb == 1 then start = { row = n.row, col = n.col }; break end
+        end
+    end
+    if not start then start = { row = path[1].row, col = path[1].col } end
+    local pool, ordered = {}, {}
+    for _, n in ipairs(path) do pool[flowKey(n)] = { row = n.row, col = n.col } end
+    local cur = start
+    table.insert(ordered, { row = cur.row, col = cur.col }); pool[flowKey(cur)] = nil
+    while next(pool) do
+        local moved = false
+        for k, node in pairs(pool) do
+            if flowNeighbour(cur.row, cur.col, node.row, node.col) then
+                table.insert(ordered, { row = node.row, col = node.col })
+                pool[k] = nil; cur = node; moved = true; break
+            end
+        end
+        if not moved then break end
+    end
+    return ordered
+end
+
+local function flowSolve(puzzle)
+    pcall(function()
+        if not puzzle or not puzzle.Solution then return end
+        local indices = {}
+        for i = 1, #puzzle.Solution do indices[i] = i end
+        for i = #indices, 2, -1 do local j = math.random(1, i); indices[i], indices[j] = indices[j], indices[i] end
+        for _, ci in ipairs(indices) do
+            local solution = puzzle.Solution[ci]; if not solution then continue end
+            local ordered = flowOrder(solution, puzzle.targetPairs[ci])
+            if not ordered or #ordered == 0 then continue end
+            puzzle.paths[ci] = {}
+            for _, node in ipairs(ordered) do
+                table.insert(puzzle.paths[ci], { row = node.row, col = node.col })
+                puzzle:updateGui(); task.wait(flow.nodeDelay)
+            end
+            task.wait(flow.lineDelay); puzzle:checkForWin()
+        end
+    end)
+end
+
+local function setupFlowHook()
+    pcall(function()
+        local storage = RobloxServices.ReplicatedStorage
+        local modFolder  = storage:FindFirstChild("Modules")
+        local miniFolder = modFolder and modFolder:FindFirstChild("Minigames")
+        local fgFolder   = miniFolder and miniFolder:FindFirstChild("FlowGameManager")
+        local fgModule   = fgFolder and fgFolder:FindFirstChild("FlowGame")
+        if fgModule then
+            local ok, FG = pcall(require, fgModule)
+            if ok and FG and FG.new and not FG.__dusekkarHooked then
+                FG.__dusekkarHooked = true
+                local orig = FG.new
+                FG.new = function(...)
+                    local p = orig(...)
+                    if flow.on then
+                        task.spawn(function() task.wait(0.3); flowSolve(p) end)
+                    end
+                    return p
+                end
+            end
+        end
+    end)
+end
+
+task.spawn(setupFlowHook)
+
+-- ──────────────────────────────────────────────────
+--  OPTIMIZED FPS BOOSTER
+-- ──────────────────────────────────────────────────
+local function optimizeInstance(inst)
+    if not inst or isAccessory(inst) then return end
+
+    if inst:IsA("Decal") or inst:IsA("Texture") then
+        if originalVisualStates[inst] == nil then
+            originalVisualStates[inst] = { property = "Transparency", value = inst.Transparency }
+        end
+        pcall(function() inst.Transparency = 1 end)
+    elseif inst:IsA("ParticleEmitter") or inst:IsA("Smoke") or inst:IsA("Fire") or inst:IsA("Sparkles") or inst:IsA("Trail") or inst:IsA("Beam") then
+        if originalVisualStates[inst] == nil then
+            originalVisualStates[inst] = { property = "Enabled", value = inst.Enabled }
+        end
+        pcall(function() inst.Enabled = false end)
+    end
+end
+
+local function processFpsQueue()
+    if isProcessingFps then return end
+    isProcessingFps = true
+    task.spawn(function()
+        while #fpsQueue > 0 and fpsBooster_enabled do
+            local processedCount = 0
+            while #fpsQueue > 0 and processedCount < 150 do
+                processedCount += 1
+                local inst = table.remove(fpsQueue)
+                if inst and inst.Parent then
+                    optimizeInstance(inst)
+                end
+            end
+            task.wait()
+        end
+        isProcessingFps = false
+    end)
+end
+
+local function enableFpsBooster()
+    fpsBooster_enabled = true
+    fpsQueue = RobloxServices.Workspace:GetDescendants()
+    processFpsQueue()
+
+    if not fpsBoosterConnection then
+        fpsBoosterConnection = RobloxServices.Workspace.DescendantAdded:Connect(function(desc)
+            if fpsBooster_enabled then
+                table.insert(fpsQueue, desc)
+                processFpsQueue()
+            end
+        end)
+    end
+end
+
+local function disableFpsBooster()
+    fpsBooster_enabled = false
+    fpsQueue = {}
+    if fpsBoosterConnection then
+        fpsBoosterConnection:Disconnect()
+        fpsBoosterConnection = nil
+    end
+    for inst, state in pairs(originalVisualStates) do
+        if inst and inst.Parent then
+            pcall(function() inst[state.property] = state.value end)
+        end
+    end
+    originalVisualStates = {}
+end
+
+if fpsBooster_enabled then
+    enableFpsBooster()
+end
+
+-- ──────────────────────────────────────────────────
+--  WINDUI MAIN GUI & INDIGO THEME CONFIG
+-- ──────────────────────────────────────────────────
+local WindUI = nil
+local loadOk, loadErr = pcall(function()
+    WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+end)
+
+if not loadOk or not WindUI then
+    WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+end
+
+WindUI:AddTheme({
+    Name = "IndigoDark",
+    Accent = Color3.fromHex("#6366F1"),
+    Background = Color3.fromHex("#0F0F1A"),
+    Container = Color3.fromHex("#181829"),
+    Text = Color3.fromHex("#E0E7FF"),
+    SubText = Color3.fromHex("#A5B4FC"),
+    Border = Color3.fromHex("#312E81"),
+})
+
+WindUI:SetTheme("IndigoDark")
+
+local Window = WindUI:CreateWindow({
+    Title = "DUSEKKAR SA",
+    Icon = "zap",
+    Author = "by: FreshLeavesSaken",
+    Folder = "DUSSEKA",
+    Size = UDim2.fromOffset(450, 560),
+    Theme = "IndigoDark",
+})
+
+-- ============================== STAMINA & SPEED MODS ==============================
+
+local function stamModule()
+    local ok, m = pcall(function()
+        return require(RobloxServices.ReplicatedStorage.Systems.Character.Game.Sprinting)
+    end)
+    return ok and m or nil
+end
+
+local function stamIsKiller()
+    local ch = LocalPlayer.Character; if not ch then return false end
+    local kf = getTeamFolder("Killers")
+    return kf and ch:IsDescendantOf(kf)
+end
+
+local function stamApply()
+    pcall(function()
+        local m = stamModule(); if not m then return end
+        if not m.DefaultsSet then pcall(function() m.Init() end) end
+        local forceNoLoss = stam.noLoss or stamIsKiller()
+        m.StaminaLoss = stam.loss; m.StaminaGain = stam.gain
+        local abilityCapActive = type(m.StaminaCap) == "number" and m.StaminaCap < (m.MaxStamina or math.huge)
+        if not abilityCapActive then
+            m.MaxStamina = stam.max
+            if type(m.StaminaCap) == "number" then m.StaminaCap = stam.max end
+        end
+        m.StaminaLossDisabled = forceNoLoss
+        if m.Stamina and m.Stamina > stam.max then m.Stamina = stam.current end
+        pcall(function() if m.__staminaChangedEvent then m.__staminaChangedEvent:Fire() end end)
+    end)
+end
+
+local function stamStart()
+    if stam.thread then return end
+    stam.thread = task.spawn(function()
+        while stam.on do
+            pcall(function()
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    stamApply()
+                end
+            end)
+            task.wait(0.5)
+        end; stam.thread = nil
+    end)
+end
+
+local function stamStop()
+    stam.on = false
+    if stam.thread then task.cancel(stam.thread); stam.thread = nil end
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.delay(1.5, function()
+        pcall(function()
+            if stam.on then stamApply(); if not stam.thread then stamStart() end end
+        end)
+    end)
+end)
+
+-- Speed Hack Logic
+local function speedModule()
+    local ok, m = pcall(function()
+        return require(RobloxServices.ReplicatedStorage.Systems.Character.Game.Sprinting)
+    end)
+    return ok and m or nil
+end
+
+local function speedApply()
+    pcall(function()
+        if not speedHack.on then return end
+        local m = speedModule(); if not m then return end
+        if not m.DefaultsSet then pcall(function() m.Init() end) end
+        if speedHack.speed ~= speedHack.lastApplied then
+            m.SprintSpeed = speedHack.speed; pcall(function() m.MaxSprintSpeed = speedHack.speed end)
+            speedHack.lastApplied = speedHack.speed
+        end
+    end)
+end
+
+local function speedStart()
+    if speedHack.thread then return end
+    speedHack.thread = task.spawn(function()
+        while speedHack.on do
+            pcall(function()
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    speedApply()
+                end
+            end)
+            task.wait(0.2)
+        end; speedHack.thread = nil
+    end)
+end
+
+local function speedStop()
+    speedHack.on = false
+    if speedHack.thread then task.cancel(speedHack.thread); speedHack.thread = nil end
+    pcall(function()
+        local m = speedModule(); if m then m.SprintSpeed = 26; pcall(function() m.MaxSprintSpeed = 26 end) end
+    end)
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.delay(1, function()
+        pcall(function()
+            speedHack.lastApplied = 0
+            if speedHack.on then speedApply(); if not speedHack.thread then speedStart() end end
+        end)
+    end)
+end)
+
+-- ============================== FORSAKEN KILLER HIGHLIGHT & NAME SYSTEM ==============================
+
+local function removeKillerVisuals(model)
+    local data = killerHighlights[model]
+    if data then
+        if data.Connections then
+            for _, conn in ipairs(data.Connections) do
+                pcall(function() conn:Disconnect() end)
+            end
+        end
+        if data.Highlight then
+            pcall(function() data.Highlight:Destroy() end)
+        end
+        if data.Billboard then
+            pcall(function() data.Billboard:Destroy() end)
+        end
+        killerHighlights[model] = nil
+    end
+end
+
+local function applyKillerVisuals(model)
+    if not model or not model:IsA("Model") then return end
+    
+    if killerIgnoreNPCs and not isRealPlayer(model) then
+        removeKillerVisuals(model)
+        return
+    end
+
+    removeKillerVisuals(model)
+
+    local head = model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart")
+    if not head then return end
+
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "KillerHighlight"
+    highlight.Adornee = model
+    highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+    highlight.OutlineTransparency = 0.5
+    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+    highlight.FillTransparency = killerHighlightRate
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Enabled = killerVisualsEnabled
+    highlight.Parent = model
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "KillerNameBillboard"
+    billboard.Adornee = head
+    billboard.Size = UDim2.new(0, 150, 0, 30)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = 300
+    billboard.Enabled = killerNameLabelsEnabled
+
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = model.Name
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextStrokeColor3 = Color3.fromRGB(255, 0, 0)
+    nameLabel.TextStrokeTransparency = 0.5
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 13
+    nameLabel.Parent = billboard
+
+    billboard.Parent = model
+
+    local connections = {}
+    
+    local ancConn = model.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            removeKillerVisuals(model)
+        end
+    end)
+    table.insert(connections, ancConn)
+
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if hum then
+        local diedConn = hum.Died:Connect(function()
+            removeKillerVisuals(model)
+        end)
+        table.insert(connections, diedConn)
+    end
+
+    killerHighlights[model] = {
+        Highlight = highlight,
+        Billboard = billboard,
+        Connections = connections
+    }
+end
+
+local function updateAllKillerVisuals()
+    local playersFolder = RobloxServices.Workspace:FindFirstChild("Players")
+    local killersFolder = playersFolder and playersFolder:FindFirstChild("Killers")
+    
+    for model, _ in pairs(killerHighlights) do
+        if not model or not model.Parent or (killerIgnoreNPCs and not isRealPlayer(model)) then
+            removeKillerVisuals(model)
+        end
+    end
+
+    if killersFolder then
+        for _, killerModel in ipairs(killersFolder:GetChildren()) do
+            if killerModel:IsA("Model") and not killerHighlights[killerModel] then
+                applyKillerVisuals(killerModel)
+            end
+        end
+    end
+end
+
+local function stopKillerScanLoop()
+    if killerScanThread then
+        task.cancel(killerScanThread)
+        killerScanThread = nil
+    end
+end
+
+local function startKillerScanLoop()
+    stopKillerScanLoop()
+    killerScanThread = task.spawn(function()
+        while true do
+            updateAllKillerVisuals()
+            task.wait(math.clamp(killerScanRate, 0.05, 5.0))
+        end
+    end)
+end
+
+task.spawn(function()
+    local playersFolder = RobloxServices.Workspace:WaitForChild("Players", 10)
+    if not playersFolder then return end
+
+    local killersFolder = playersFolder:WaitForChild("Killers", 10)
+    if killersFolder then
+        killersFolder.ChildAdded:Connect(function(child)
+            task.wait(0.1)
+            if child:IsA("Model") then
+                applyKillerVisuals(child)
+            end
+        end)
+        killersFolder.ChildRemoved:Connect(function(child)
+            removeKillerVisuals(child)
+        end)
+    end
+
+    startKillerScanLoop()
+end)
+
+if stam.on then stamStart() end
+if speedHack.on then speedStart() end
+
+-- ============================== GUI TABS ==============================
+
+local tabDusekkar = Window:Tab({ Title = "Dusekkar Aim", Icon = "zap", IconColor = Color3.fromHex("#818CF8"), ShowTabTitle = false })
+local tabKillerAbilities = Window:Tab({ Title = "Killer Abilities", Icon = "skull", IconColor = Color3.fromHex("#EF4444"), ShowTabTitle = false })
+local tabGenerator = Window:Tab({ Title = "Generator", Icon = "circuit-board", IconColor = Color3.fromHex("#10B981"), ShowTabTitle = false })
+local tabPlayer = Window:Tab({ Title = "Local Player", Icon = "user", IconColor = Color3.fromHex("#A5B4FC"), ShowTabTitle = false })
+local tabVisuals = Window:Tab({ Title = "Killers ESP", Icon = "eye", IconColor = Color3.fromHex("#6366F1"), ShowTabTitle = false })
+
+-- Generator Auto Solve Tab
+do
+    local sec_gen = tabGenerator:Section({ Title = "Auto-Gen (Generator Auto Solve)", Opened = true })
+
+    sec_gen:Toggle({
+        Title = "Enable Auto-Gen", Default = flow.on, Type = "Checkbox", Flag = "flowOn",
+        Callback = function(on)
+            flow.on = on
+            saveConfig()
+        end
+    })
+
+    sec_gen:Slider({
+        Title = "Node Solve Speed (s)", Flag = "flowNodeDelay", Step = 0.01,
+        Value = { Min = 0.01, Max = 0.50, Default = flow.nodeDelay },
+        Callback = function(v)
+            flow.nodeDelay = v
+            saveConfig()
+        end
+    })
+
+    sec_gen:Slider({
+        Title = "Line Pause Delay (s)", Flag = "flowLineDelay", Step = 0.05,
+        Value = { Min = 0.00, Max = 1.00, Default = flow.lineDelay },
+        Callback = function(v)
+            flow.lineDelay = v
+            saveConfig()
+        end
+    })
+end
+
+-- Local Player Settings Tab
+do
+    local sec_stamina = tabPlayer:Section({ Title = "Stamina Modifications", Opened = true })
+
+    sec_stamina:Toggle({
+        Title = "Custom Stamina",
+        Type = "Checkbox",
+        Flag = "stamOn",
+        Default = stam.on,
+        Callback = function(on)
+            pcall(function()
+                stam.on = on
+                if on then stamStart() else stamStop() end
+                saveConfig()
+            end)
+        end
+    })
+
+    sec_stamina:Toggle({
+        Title = "Infinite Stamina",
+        Type = "Checkbox",
+        Flag = "stamNoLoss",
+        Default = stam.noLoss,
+        Callback = function(on)
+            pcall(function()
+                stam.noLoss = on
+                stamApply()
+                if on and not stam.on then
+                    stam.on = true
+                    stamStart()
+                end
+                saveConfig()
+            end)
+        end
+    })
+
+    sec_stamina:Slider({
+        Title = "Loss Rate", Flag = "stamLoss", Step = 1, Value = { Min = 0, Max = 50, Default = stam.loss },
+        Callback = function(v) pcall(function() stam.loss = v; saveConfig() end) end
+    })
+
+    sec_stamina:Slider({
+        Title = "Gain Rate", Flag = "stamGain", Step = 1, Value = { Min = 0, Max = 50, Default = stam.gain },
+        Callback = function(v) pcall(function() stam.gain = v; saveConfig() end) end
+    })
+
+    sec_stamina:Slider({
+        Title = "Max Pool", Flag = "stamMax", Step = 1, Value = { Min = 50, Max = 500, Default = stam.max },
+        Callback = function(v) pcall(function() stam.max = v; saveConfig() end) end
+    })
+
+    sec_stamina:Slider({
+        Title = "Current Value", Flag = "stamCurrent", Step = 1, Value = { Min = 0, Max = 500, Default = stam.current },
+        Callback = function(v) pcall(function() stam.current = v; saveConfig() end) end
+    })
+
+    local sec_speed = tabPlayer:Section({ Title = "Speed Hack", Opened = true })
+
+    sec_speed:Toggle({
+        Title = "Custom Sprint Speed", Type = "Checkbox", Flag = "speedOn", Default = speedHack.on,
+        Callback = function(on)
+            pcall(function()
+                speedHack.on = on
+                speedHack.lastApplied = 0
+                if on then speedStart() else speedStop() end
+                saveConfig()
+            end)
+        end
+    })
+
+    sec_speed:Input({
+        Title = "Sprint Speed Value", Flag = "speedValue", Default = tostring(speedHack.speed), Placeholder = "e.g. 30",
+        Callback = function(t)
+            pcall(function()
+                local n = tonumber(t)
+                if n and n > 0 and n <= 200 then
+                    speedHack.speed = n
+                    speedHack.lastApplied = 0
+                    saveConfig()
+                end
+            end)
+        end
+    })
+
+    local sec_performance = tabPlayer:Section({ Title = "Performance & FPS Optimization", Opened = true })
+
+    sec_performance:Toggle({
+        Title = "FPS Booster (Remove Decals & Particles)", Type = "Checkbox", Flag = "fpsBoosterEnabled", Default = fpsBooster_enabled,
+        Callback = function(on)
+            pcall(function()
+                if on then enableFpsBooster() else disableFpsBooster() end
+                saveConfig()
+            end)
+        end
+    })
+end
+
+-- Visuals ESP Tab
+do
+    local sec_esp = tabVisuals:Section({ Title = "Forsaken Killers Visuals", Opened = true })
+
+    sec_esp:Toggle({
+        Title = "Highlight Killers", Default = killerVisualsEnabled, Type = "Checkbox", Flag = "killerHighlightEnabled",
+        Callback = function(on)
+            killerVisualsEnabled = on
+            for _, data in pairs(killerHighlights) do
+                if data.Highlight then data.Highlight.Enabled = on end
+            end
+            saveConfig()
+        end
+    })
+
+    sec_esp:Toggle({
+        Title = "Show Killer Name Labels", Default = killerNameLabelsEnabled, Type = "Checkbox", Flag = "killerNamesEnabled",
+        Callback = function(on)
+            killerNameLabelsEnabled = on
+            for _, data in pairs(killerHighlights) do
+                if data.Billboard then data.Billboard.Enabled = on end
+            end
+            saveConfig()
+        end
+    })
+
+    sec_esp:Toggle({
+        Title = "Ignore NPCs / Bots", Default = killerIgnoreNPCs, Type = "Checkbox", Flag = "killerIgnoreNPCs",
+        Callback = function(on)
+            killerIgnoreNPCs = on
+            updateAllKillerVisuals()
+            saveConfig()
+        end
+    })
+
+    sec_esp:Slider({
+        Title = "Highlight Scan Speed / Interval (s)", Flag = "killerScanRate", Step = 0.05, Value = { Min = 0.05, Max = 3.0, Default = killerScanRate },
+        Callback = function(v)
+            killerScanRate = v
+            startKillerScanLoop()
+            saveConfig()
+        end
+    })
+
+    sec_esp:Slider({
+        Title = "Highlight Transparency / Fill Rate", Flag = "killerHighlightRate", Step = 0.05, Value = { Min = 0.0, Max = 1.0, Default = killerHighlightRate },
+        Callback = function(v)
+            killerHighlightRate = v
+            for _, data in pairs(killerHighlights) do
+                if data.Highlight then data.Highlight.FillTransparency = v end
+            end
+            saveConfig()
+        end
+    })
+
+    sec_esp:Button({
+        Title = "Refresh Killer Visuals Now",
+        Callback = function() updateAllKillerVisuals() end
+    })
+end
+
+-- ============================== PLASMA BEAM SILENT AIM & VELOCITY PREDICTION ==============================
+local currentPredictedPos          = nil
+local lastTargetHRP                = nil
+local lastFrameTime                = os.clock()
+
+local targetBoxGui                 = nil
+local plasma_rf                    = nil
+
+local visualSphere                 = nil
+local visualCylinder               = nil
+local renderConnection             = nil
+local plasma_motionData            = {}
+
+local function plasmaGetVelocity(part)
+    if not part or not part.Parent then return Vector3.zero, Vector3.zero end
+
+    local model = part.Parent
+    local hum = model and model:FindFirstChildOfClass("Humanoid")
+
+    local now = os.clock()
+    local pos = part.Position
+    local data = plasma_motionData[part]
+
+    if not data then
+        plasma_motionData[part] = { 
+            lastPos = pos, 
+            lastTime = now, 
+            vel = Vector3.zero, 
+            accel = Vector3.zero,
+            isLagging = false,
+        }
+        return Vector3.zero, Vector3.zero
+    end
+
+    local dt = now - data.lastTime
+    if dt < 0.005 then
+        return data.vel, data.accel
+    end
+
+    local deltaPos = (pos - data.lastPos)
+    local deltaVel = deltaPos / dt
+    data.lastPos = pos
+    data.lastTime = now
+
+    local physVel = Vector3.zero
+    if part:IsA("BasePart") then
+        physVel = part.AssemblyLinearVelocity or part.Velocity or Vector3.zero
+    end
+
+    local rawVel = (deltaPos.Magnitude > physVel.Magnitude) and deltaVel or physVel
+
+    local horizontalVel = Vector3.new(rawVel.X, 0, rawVel.Z)
+    local isStandingStill = (hum and hum.MoveDirection.Magnitude < 0.05) or (horizontalVel.Magnitude < 0.8)
+
+    if plasma_pingDetection then
+        if dt > 0.12 or (deltaPos.Magnitude < 0.01 and physVel.Magnitude > 2) then
+            data.isLagging = true
+        else
+            data.isLagging = false
+        end
+    else
+        data.isLagging = false
+    end
+
+    if isStandingStill then
+        data.vel = Vector3.zero
+        data.accel = Vector3.zero
+        return Vector3.zero, Vector3.zero
+    end
+
+    if rawVel.Magnitude > 250 then rawVel = Vector3.zero end
+
+    local rawAccel = (rawVel - data.vel) / dt
+    if rawAccel.Magnitude > 150 then rawAccel = Vector3.zero end
+
+    local dot = 1
+    if data.vel.Magnitude > 1 and rawVel.Magnitude > 1 then
+        dot = data.vel.Unit:Dot(rawVel.Unit)
+    end
+
+    local smoothFactor = math.clamp(dt * 18.0, 0.1, 0.75)
+    if dot < 0.3 then smoothFactor = math.clamp(dt * 30.0, 0.3, 0.9) end
+
+    local newVel = data.vel:Lerp(rawVel, smoothFactor)
+    local newAccel = data.accel:Lerp(rawAccel, smoothFactor * 0.5)
+
+    data.vel = newVel
+    data.accel = newAccel
+
+    return newVel, newAccel
+end
+
+local function calculateTargetPos(hrpPart)
+    if not hrpPart or not hrpPart.Parent then return nil, true end
+    local model = hrpPart.Parent
+    
+    local torsoPart = model:FindFirstChild("Torso") 
+        or model:FindFirstChild("UpperTorso") 
+        or hrpPart
+
+    local heightOffset = Vector3.new(0, plasma_aimOffset, 0)
+    local originPos = torsoPart.Position + heightOffset
+
+    local isTargetLagging = false
+    local pingSeconds = 0
+
+    pcall(function()
+        local pingItem = RobloxServices.Stats.Network.ServerStatsItem["Data Ping"]
+        if pingItem then pingSeconds = (pingItem:GetValue() / 1000) end
+    end)
+
+    local data = plasma_motionData[torsoPart]
+    if plasma_pingDetection then
+        if pingSeconds > 0.25 or (data and data.isLagging) then
+            isTargetLagging = true
+        end
+    end
+
+    local vel, accel = plasmaGetVelocity(torsoPart)
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    
+    local isStationary = (vel.Magnitude < 0.1) 
+        or (hum and hum.MoveDirection.Magnitude < 0.05) 
+        or (Vector3.new(vel.X, 0, vel.Z).Magnitude < 0.8)
+
+    if isStationary or isTargetLagging then
+        return originPos, true
+    else
+        local leadTime = plasma_prediction + (pingSeconds * 0.5)
+        local predictedOffset = (vel * leadTime) + (0.5 * accel * (leadTime ^ 2))
+
+        if predictedOffset.Magnitude > 35 then
+            predictedOffset = predictedOffset.Unit * 35
+        end
+
+        local targetPos = originPos + predictedOffset
+
+        local rayDir = targetPos - originPos
+        if rayDir.Magnitude > 0.05 then
+            local rayParams = RaycastParams.new()
+            rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+            local ignoreList = { model }
+            if LocalPlayer.Character then table.insert(ignoreList, LocalPlayer.Character) end
+            if visualSphere then table.insert(ignoreList, visualSphere) end
+            if visualCylinder then table.insert(ignoreList, visualCylinder) end
+
+            rayParams.FilterDescendantsInstances = ignoreList
+
+            local hitResult = RobloxServices.Workspace:Raycast(originPos, rayDir, rayParams)
+            if hitResult then
+                targetPos = hitResult.Position + (hitResult.Normal * 0.2)
+            end
+        end
+
+        return targetPos, false
+    end
+end
+
+-- Helper to get Lowest HP and Nearest Survivor
+local function getLowestNearestSurvivor()
     local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then
-        isCurrentlyInMatch = false
-        return
+    if not char then return nil end
+    local myHRP = char:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return nil end
+
+    local pf = RobloxServices.Workspace:FindFirstChild("Players")
+    local survivorsFolder = pf and pf:FindFirstChild("Survivors")
+    
+    local candidateModels = {}
+    if survivorsFolder then
+        for _, m in ipairs(survivorsFolder:GetChildren()) do
+            table.insert(candidateModels, m)
+        end
+    else
+        for _, plr in ipairs(RobloxServices.Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                table.insert(candidateModels, plr.Character)
+            end
+        end
     end
 
-    local distance = (char.HumanoidRootPart.Position - LOBBY_POSITION).Magnitude
-    if distance <= LOBBY_RADIUS then
-        isCurrentlyInMatch = false
-        return
+    local bestHRP, bestScore = nil, math.huge
+    for _, model in ipairs(candidateModels) do
+        if model:IsA("Model") and model ~= char then
+            if not (plasma_ignoreNPCs and not isRealPlayer(model)) then
+                local hrp = model:FindFirstChild("HumanoidRootPart")
+                local hum = model:FindFirstChildOfClass("Humanoid")
+                if hrp and hum and hum.Health > 0 then
+                    local dist = (hrp.Position - myHRP.Position).Magnitude
+                    local score = (hum.Health * 10) + dist
+                    if score < bestScore then
+                        bestScore = score
+                        bestHRP = hrp
+                    end
+                end
+            end
+        end
     end
 
-    local pg = LocalPlayer:FindFirstChild("PlayerGui")
-    if pg then
-        local mainUI = pg:FindFirstChild("MainUI")
-        if mainUI and not mainUI.Enabled then
-            isCurrentlyInMatch = false
+    return bestHRP
+end
+
+-- ============================== KILLER ABILITIES (AUTOMATIC FORSAKEN DETECTION) ==============================
+
+local function executeKillerAbilitySpinAndAim(abilityConfig, abilityName)
+    if abilityConfig.isSpinning then return end
+    abilityConfig.isSpinning = true
+
+    task.spawn(function()
+        local char = LocalPlayer.Character
+        if not char then
+            abilityConfig.isSpinning = false
+            return
+        end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then
+            abilityConfig.isSpinning = false
             return
         end
 
-        for _, uiName in ipairs({"Lobby", "LobbyUI", "Menu", "MenuUI", "MainMenu", "IntroUI", "SpectateUI"}) do
-            local ui = pg:FindFirstChild(uiName)
-            if ui and ui.Enabled then
-                isCurrentlyInMatch = false
+        ------------------------------------------------------------------
+        -- PHASE 1: SPIN DURATION (Rotates ONLY character body)
+        ------------------------------------------------------------------
+        local spinStart = os.clock()
+        local spinDuration = math.clamp(abilityConfig.duration, 0.05, 10.0)
+        local speed = math.clamp(abilityConfig.spinSpeed, 1, 300)
+
+        while os.clock() - spinStart < spinDuration do
+            local dt = task.wait()
+            if not LocalPlayer.Character or not hrp.Parent then break end
+            
+            -- Rotate character HumanoidRootPart only
+            hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(speed * dt * 60), 0)
+        end
+
+        ------------------------------------------------------------------
+        -- PHASE 2: AIM LOCK DURATION (Locks ONLY character body toward target)
+        ------------------------------------------------------------------
+        local aimStart = os.clock()
+        local aimDuration = math.clamp(abilityConfig.aimDuration or 0.5, 0.05, 10.0)
+
+        while os.clock() - aimStart < aimDuration do
+            local dt = task.wait()
+            if not LocalPlayer.Character or not hrp.Parent then break end
+
+            local targetHRP = getLowestNearestSurvivor()
+            if targetHRP and targetHRP.Parent then
+                local predictedTargetPos = calculateTargetPos(targetHRP)
+                if predictedTargetPos then
+                    -- Rotate ONLY the character's HumanoidRootPart toward predicted target position
+                    local targetPosSameY = Vector3.new(predictedTargetPos.X, hrp.Position.Y, predictedTargetPos.Z)
+                    if (targetPosSameY - hrp.Position).Magnitude > 0.01 then
+                        hrp.CFrame = CFrame.lookAt(hrp.Position, targetPosSameY)
+                    end
+                end
+            end
+        end
+
+        abilityConfig.isSpinning = false
+    end)
+end
+
+local function executeMassInfection()
+    executeKillerAbilitySpinAndAim(massInfection, "MassInfection")
+end
+
+local function executeEntanglement()
+    executeKillerAbilitySpinAndAim(entanglement, "Entanglement")
+end
+
+------------------------------------------------------------------
+-- AUTOMATIC FORSAKEN ABILITY CAST DETECTOR
+------------------------------------------------------------------
+local lastAbilityTriggerTime = 0
+
+local function checkAndTriggerAbility(strName)
+    if not killerAutoDetectAbilities then return end
+    if type(strName) ~= "string" or #strName < 3 then return end
+
+    local now = os.clock()
+    if now - lastAbilityTriggerTime < 0.2 then return end
+
+    local lower = strName:lower()
+
+    if massInfection.enabled and (lower:find("mass") or lower:find("infection")) then
+        lastAbilityTriggerTime = now
+        executeMassInfection()
+    elseif entanglement.enabled and (lower:find("entangl") or lower:find("tangle")) then
+        lastAbilityTriggerTime = now
+        executeEntanglement()
+    end
+end
+
+-- Hook outgoing remotes for Forsaken ability casts
+if typeof(hookmetamethod) == "function" then
+    local oldNc
+    oldNc = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        if (method == "FireServer" or method == "InvokeServer") then
+            local args = {...}
+            for _, arg in ipairs(args) do
+                if type(arg) == "string" then
+                    checkAndTriggerAbility(arg)
+                elseif type(arg) == "table" then
+                    for _, v in pairs(arg) do
+                        if type(v) == "string" then
+                            checkAndTriggerAbility(v)
+                        end
+                    end
+                end
+            end
+        end
+        return oldNc(self, ...)
+    end)
+end
+
+-- Listen to Character animations and instances for ability use
+local function setupCharacterAbilityListeners(character)
+    if not character then return end
+
+    character.ChildAdded:Connect(function(child)
+        checkAndTriggerAbility(child.Name)
+    end)
+
+    task.spawn(function()
+        local hum = character:WaitForChild("Humanoid", 5)
+        if not hum then return end
+        local animator = hum:WaitForChild("Animator", 5) or hum
+        animator.AnimationPlayed:Connect(function(track)
+            if track and track.Animation then
+                checkAndTriggerAbility(track.Animation.Name)
+            end
+        end)
+    end)
+end
+
+if LocalPlayer.Character then
+    setupCharacterAbilityListeners(LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(setupCharacterAbilityListeners)
+
+-- Input Keybind Listener for Killer Abilities
+RobloxServices.UserInput.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        if massInfection.enabled and input.KeyCode == massInfection.keybind then
+            executeMassInfection()
+        elseif entanglement.enabled and input.KeyCode == entanglement.keybind then
+            executeEntanglement()
+        end
+    end
+end)
+
+-- Killer Abilities Section GUI Construction
+do
+    local sec_auto = tabKillerAbilities:Section({ Title = "Forsaken Auto-Detection", Opened = true })
+
+    sec_auto:Toggle({
+        Title = "Auto-Detect Ability Casts (Forsaken)", Default = killerAutoDetectAbilities, Type = "Checkbox", Flag = "autoDetectAbilities",
+        Callback = function(on)
+            killerAutoDetectAbilities = on
+            saveConfig()
+        end
+    })
+
+    local sec_mass = tabKillerAbilities:Section({ Title = "Mass Infection Aimbot", Opened = true })
+
+    sec_mass:Toggle({
+        Title = "Enable Mass Infection Aimbot", Default = massInfection.enabled, Type = "Checkbox", Flag = "massInfectionEnabled",
+        Callback = function(on)
+            massInfection.enabled = on
+            saveConfig()
+        end
+    })
+
+    sec_mass:Slider({
+        Title = "Spin Duration (s)", Flag = "massInfectionDuration", Step = 0.05,
+        Value = { Min = 0.1, Max = 5.0, Default = massInfection.duration },
+        Callback = function(v)
+            massInfection.duration = v
+            saveConfig()
+        end
+    })
+
+    sec_mass:Slider({
+        Title = "Aim Lock Duration (s)", Flag = "massInfectionAimDuration", Step = 0.05,
+        Value = { Min = 0.05, Max = 5.0, Default = massInfection.aimDuration },
+        Callback = function(v)
+            massInfection.aimDuration = v
+            saveConfig()
+        end
+    })
+
+    sec_mass:Slider({
+        Title = "Spin Speed", Flag = "massInfectionSpeed", Step = 1,
+        Value = { Min = 5, Max = 150, Default = massInfection.spinSpeed },
+        Callback = function(v)
+            massInfection.spinSpeed = v
+            saveConfig()
+        end
+    })
+
+    sec_mass:Keybind({
+        Title = "Mass Infection Keybind", Flag = "massInfectionKeybind", Default = "E",
+        Callback = function(key)
+            if key then massInfection.keybind = key end
+        end
+    })
+
+    sec_mass:Button({
+        Title = "Trigger Mass Infection Now",
+        Callback = function() executeMassInfection() end
+    })
+
+    local sec_entangle = tabKillerAbilities:Section({ Title = "Entanglement Aimbot", Opened = true })
+
+    sec_entangle:Toggle({
+        Title = "Enable Entanglement Aimbot", Default = entanglement.enabled, Type = "Checkbox", Flag = "entanglementEnabled",
+        Callback = function(on)
+            entanglement.enabled = on
+            saveConfig()
+        end
+    })
+
+    sec_entangle:Slider({
+        Title = "Spin Duration (s)", Flag = "entanglementDuration", Step = 0.05,
+        Value = { Min = 0.05, Max = 3.0, Default = entanglement.duration },
+        Callback = function(v)
+            entanglement.duration = v
+            saveConfig()
+        end
+    })
+
+    sec_entangle:Slider({
+        Title = "Aim Lock Duration (s)", Flag = "entanglementAimDuration", Step = 0.05,
+        Value = { Min = 0.05, Max = 5.0, Default = entanglement.aimDuration },
+        Callback = function(v)
+            entanglement.aimDuration = v
+            saveConfig()
+        end
+    })
+
+    sec_entangle:Slider({
+        Title = "Spin Speed", Flag = "entanglementSpeed", Step = 1,
+        Value = { Min = 5, Max = 150, Default = entanglement.spinSpeed },
+        Callback = function(v)
+            entanglement.spinSpeed = v
+            saveConfig()
+        end
+    })
+
+    sec_entangle:Keybind({
+        Title = "Entanglement Keybind", Flag = "entanglementKeybind", Default = "R",
+        Callback = function(key)
+            if key then entanglement.keybind = key end
+        end
+    })
+
+    sec_entangle:Button({
+        Title = "Trigger Entanglement Now",
+        Callback = function() executeEntanglement() end
+    })
+end
+
+-- PlasmaBeam Aim Tab
+do
+    local sec_027 = tabDusekkar:Section({ Title = "PlasmaBeam Silent Aim", Opened = true })
+
+    local function isTargetVisible(targetPart)
+        local char = LocalPlayer.Character
+        if not char then return false end
+        
+        local origin = CurrentCamera.CFrame.Position
+        local dest = targetPart.Position
+        local direction = dest - origin
+        
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Exclude
+        params.FilterDescendantsInstances = {char, CurrentCamera}
+        
+        local result = RobloxServices.Workspace:Raycast(origin, direction, params)
+        if result then
+            local hitModel = result.Instance:FindFirstAncestorOfClass("Model")
+            if hitModel and hitModel == targetPart.Parent then return true end
+            return false
+        end
+        return true
+    end
+
+    local function plasmaGetTarget()
+        local char = LocalPlayer.Character; if not char then return nil end
+        local myHRP = char:FindFirstChild("HumanoidRootPart"); if not myHRP then return nil end
+        
+        local pf = RobloxServices.Workspace:FindFirstChild("Players")
+        local targetFolder = pf and pf:FindFirstChild(plasma_targetType)
+        if not targetFolder then return nil end
+        
+        local best, bestScore = nil, math.huge
+        for _, model in ipairs(targetFolder:GetChildren()) do
+            if model ~= char then
+                if not (plasma_ignoreNPCs and not isRealPlayer(model)) then
+                    local hrp = model:FindFirstChild("HumanoidRootPart")
+                    local hum = model:FindFirstChildOfClass("Humanoid")
+                    if hrp and hum and hum.Health > 0 then
+                        if plasma_throughWalls or isTargetVisible(hrp) then
+                            local d = (hrp.Position - myHRP.Position).Magnitude
+                            local score = math.huge
+
+                            if plasma_targetSelectionMode == "Nearest" then
+                                score = d
+                            elseif plasma_targetSelectionMode == "LowestHp" then
+                                score = (hum.Health * 10000) + d
+                            elseif plasma_targetSelectionMode == "LowestHp&Nearest" then
+                                score = (hum.Health) * d
+                            end
+
+                            if score < bestScore then 
+                                bestScore = score
+                                best = hrp 
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        return best
+    end
+
+    local function destroyPredictionVisuals()
+        if visualSphere then visualSphere:Destroy(); visualSphere = nil end
+        if visualCylinder then visualCylinder:Destroy(); visualCylinder = nil end
+    end
+
+    local function updatePredictionVisuals(targetPos, originPos)
+        if not sphere_visualsEnabled then
+            destroyPredictionVisuals()
+            return
+        end
+
+        if not visualSphere or not visualSphere.Parent then
+            visualSphere = Instance.new("Part")
+            visualSphere.Name = "PredictionSphere"
+            visualSphere.Shape = Enum.PartType.Ball
+            visualSphere.CanCollide = false
+            visualSphere.CanQuery = false
+            visualSphere.CanTouch = false
+            visualSphere.Anchored = true
+            visualSphere.CastShadow = false
+            visualSphere.Parent = RobloxServices.Workspace
+        end
+
+        visualSphere.Color = sphere_color
+        visualSphere.Transparency = sphere_transparency
+        visualSphere.Material = sphere_material
+        visualSphere.Size = Vector3.new(sphere_size, sphere_size, sphere_size)
+        visualSphere.CFrame = CFrame.new(targetPos)
+
+        if cylinder_visualsEnabled and originPos then
+            local dist = (targetPos - originPos).Magnitude
+            if dist > 0.05 then
+                if not visualCylinder or not visualCylinder.Parent then
+                    visualCylinder = Instance.new("Part")
+                    visualCylinder.Name = "PredictionCylinder"
+                    visualCylinder.Shape = Enum.PartType.Cylinder
+                    visualCylinder.CanCollide = false
+                    visualCylinder.CanQuery = false
+                    visualCylinder.CanTouch = false
+                    visualCylinder.Anchored = true
+                    visualCylinder.CastShadow = false
+                    visualCylinder.Parent = RobloxServices.Workspace
+                end
+
+                visualCylinder.Color = sphere_color
+                visualCylinder.Transparency = sphere_transparency
+                visualCylinder.Material = sphere_material
+                visualCylinder.Size = Vector3.new(dist, cylinder_thickness, cylinder_thickness)
+
+                local midPoint = (originPos + targetPos) / 2
+                visualCylinder.CFrame = CFrame.lookAt(midPoint, targetPos) * CFrame.Angles(0, math.rad(90), 0)
+            elseif visualCylinder then
+                visualCylinder:Destroy(); visualCylinder = nil
+            end
+        elseif visualCylinder then
+            visualCylinder:Destroy(); visualCylinder = nil
+        end
+    end
+
+    local function startVisualizer()
+        if renderConnection then return end
+        
+        local updateEvent = RobloxServices.RunService.PreRender or RobloxServices.RunService.RenderStepped
+        lastFrameTime = os.clock()
+
+        renderConnection = updateEvent:Connect(function()
+            if not plasma_enabled then
+                currentPredictedPos = nil
+                lastTargetHRP = nil
+                destroyPredictionVisuals()
                 return
             end
-        end
-    end
+            
+            local now = os.clock()
+            local dt = math.clamp(now - lastFrameTime, 0.001, 0.1)
+            lastFrameTime = now
 
-    local generatorExists = #cachedGenerators > 0
-
-    local hasMap = Workspace:FindFirstChild("Map") or Workspace:FindFirstChild("Arena") or generatorExists
-    if not hasMap and distance < 800 then
-        isCurrentlyInMatch = false
-        return
-    end
-
-    isCurrentlyInMatch = true
-end
-
-local function inMatch()
-    if os_clock() - lastInMatchCheck >= IN_MATCH_CHECK_INTERVAL then
-        lastInMatchCheck = os_clock()
-        pcall(updateInMatchCache)
-    end
-    return isCurrentlyInMatch
-end
-
-local function notify(title, text, duration)
-    pcall(function()
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = title,
-            Text = text,
-            Duration = duration or 3
-        })
-    end)
-end
-
-LocalPlayer.CharacterAdded:Connect(function(char)
-    cachedSprintingModule = nil
-    cachedM1Btn = nil
-    cachedM1CooldownObj = nil
-    local hum = char:WaitForChild("Humanoid", 10)
-    if hum then pcall(function() hum.AutoRotate = true end) end
-end)
-
-local function readCooldownValue(cdObj)
-    if not cdObj then return nil end
-    if cdObj:IsA("NumberValue") then
-        return cdObj.Value
-    end
-    if cdObj:IsA("StringValue") then
-        return tonumber(cdObj.Value)
-    end
-    if cdObj:IsA("TextLabel") or cdObj:IsA("TextBox") then
-        return tonumber(cdObj.Text)
-    end
-    if cdObj.Value ~= nil then
-        if type(cdObj.Value) == "number" then return cdObj.Value end
-        if type(cdObj.Value) == "string" then return tonumber(cdObj.Value) end
-    end
-    if cdObj.Text ~= nil then
-        return tonumber(cdObj.Text)
-    end
-    return nil
-end
-
-local function getButtonVisualName(btn)
-    local names = { btn.Name:lower() }
-    for _, desc in ipairs(btn:GetDescendants()) do
-        if desc:IsA("TextLabel") or desc:IsA("TextBox") then
-            local txt = desc.Text:lower()
-            if txt ~= "" then
-                table_insert(names, txt)
-            end
-        end
-    end
-    return names
-end
-
-local cachedM1Btn = nil
-local function getM1Button()
-    if cachedM1Btn and cachedM1Btn.Parent then
-        return cachedM1Btn
-    end
-    
-    local pg = LocalPlayer:FindFirstChild("PlayerGui")
-    if not pg then return nil end
-    local mainUI = pg:FindFirstChild("MainUI")
-    if not mainUI then return nil end
-    local container = mainUI:FindFirstChild("AbilityContainer")
-    if not container then return nil end
-    
-    local blacklist = {
-        "unstable", "eye", "eyes", "infection", "entanglement", "rejuvenate", "block", 
-        "heal", "teleport", "ability", "skill", "shield", "dodge", "run", "dash",
-        "behead", "gashing", "wound", "raging", "pace", "prankster", "void rush", "rush",
-        "mass infection", "rejuvenate the rotten", "void", "nova", "observant", 
-        "hallucination", "hallucinations", "blood hook", "bloodhook", "ascension", 
-        "cataclysm", "hunter's feast", "hunters feast", "leap", "gaze", "corrupt", 
-        "nature", "trap", "traps", "spike", "spikes", "corrupt energy", "pursuit", "infernal"
-    }
-    
-    local targetNames = {
-        "slash", "swing", "punch", "stab", "lacerate", "bite", "claw", "hit", "thrust", "dagger", "carving", "eviscerate"
-    }
-    
-    local children = container:GetChildren()
-    
-    local function isBtnBlacklisted(btn)
-        local names = getButtonVisualName(btn)
-        for _, name in ipairs(names) do
-            for _, bName in ipairs(blacklist) do
-                if name:find(bName) then
-                    return true
-                end
-            end
-        end
-        return false
-    end
-    
-    for _, child in ipairs(children) do
-        if child:IsA("GuiObject") and child.Visible then
-            if not isBtnBlacklisted(child) then
-                local names = getButtonVisualName(child)
-                for _, name in ipairs(names) do
-                    for _, tName in ipairs(targetNames) do
-                        if name == tName then
-                            cachedM1Btn = child
-                            return child
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    for _, child in ipairs(children) do
-        if child:IsA("GuiObject") and child.Visible then
-            if not isBtnBlacklisted(child) then
-                local names = getButtonVisualName(child)
-                for _, name in ipairs(names) do
-                    for _, tName in ipairs(targetNames) do
-                        if name:find(tName) then
-                            cachedM1Btn = child
-                            return child
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    for _, child in ipairs(children) do
-        if child:IsA("GuiObject") and child.Visible then
-            if not isBtnBlacklisted(child) then
-                local hotkey = child:FindFirstChild("Hotkey") or child:FindFirstChild("Keybind") or child:FindFirstChild("Key")
-                if hotkey and (hotkey:IsA("TextLabel") or hotkey:IsA("TextBox")) then
-                    local txt = hotkey.Text:lower()
-                    if txt == "m1" or txt == "lmb" or txt == "click" or txt:find("mouse") then
-                        cachedM1Btn = child
-                        return child
-                    end
-                end
-            end
-        end
-    end
-    
-    for _, child in ipairs(children) do
-        if child:IsA("GuiObject") and child.Visible then
-            if not isBtnBlacklisted(child) then
-                local name = child.Name:lower()
-                if name ~= "uipadding" and name ~= "uilistlayout" and name ~= "uigridlayout" then
-                    cachedM1Btn = child
-                    return child
-                end
-            end
-        end
-    end
-    
-    return nil
-end
-
-local cachedM1CooldownObj = nil
-local function getM1Cooldown()
-    if cachedM1CooldownObj and cachedM1CooldownObj.Parent then
-        return cachedM1CooldownObj
-    end
-
-    local btn = getM1Button()
-    if not btn then return nil end
-    local cd = btn:FindFirstChild("CooldownTime")
-        or btn:FindFirstChild("Cooldown")
-        or btn:FindFirstChildWhichIsA("NumberValue")
-        or btn:FindFirstChildWhichIsA("StringValue")
-    if cd then 
-        cachedM1CooldownObj = cd
-        return cd 
-    end
-    local lbl = btn:FindFirstChild("CooldownLabel") or btn:FindFirstChild("Timer") or btn:FindFirstChild("CD")
-    if lbl then 
-        cachedM1CooldownObj = lbl
-        return lbl 
-    end
-    return nil
-end
-
-local function isM1OnCooldown()
-    local cdObj = getM1Cooldown()
-    if not cdObj then return false end
-    local val = readCooldownValue(cdObj)
-    return (val and val > 0.1) or false
-end
-
-local function isM1OnCooldownCached()
-    local now = os_clock()
-    if now - lastM1CDCheck < 0.05 then
-        return cachedM1CD
-    end
-    lastM1CDCheck = now
-    cachedM1CD = isM1OnCooldown()
-    return cachedM1CD
-end
-
-local function isValidKillerModel(model)
-    if not model then return false end
-    if model == LocalPlayer.Character then return false end
-    
-    if model:GetAttribute("NPC") == true or model:GetAttribute("IsNPC") == true then
-        return false
-    end
-
-    local humanoid = killerHumanoidCache[model]
-    if not humanoid or not humanoid.Parent then
-        humanoid = model:FindFirstChildWhichIsA("Humanoid")
-        killerHumanoidCache[model] = humanoid
-    end
-
-    if not humanoid or not humanoid.Health or humanoid.Health <= 0 then
-        return false
-    end
-
-    local hrp = killerHrpCache[model]
-    if not hrp or not hrp.Parent then
-        hrp = model:FindFirstChild("HumanoidRootPart")
-        killerHrpCache[model] = hrp
-    end
-    if not hrp then return false end
-
-    local isClean = killerNameCheckCache[model]
-    if isClean == nil then
-        local lowerName = model.Name:lower()
-        if lowerName:find("clone") or lowerName:find("npc") or lowerName:find("fake") then
-            killerNameCheckCache[model] = false
-            isClean = false
-        else
-            killerNameCheckCache[model] = true
-            isClean = true
-        end
-    end
-
-    return isClean
-end
-
-local function isValidSurvivor(model)
-    if not model then return false end
-    if model == LocalPlayer.Character then return false end
-    
-    if model:GetAttribute("NPC") == true or model:GetAttribute("IsNPC") == true then
-        return false
-    end
-
-    if model.Parent and (model.Parent.Name == "Killers" or (model.Parent.Parent and model.Parent.Parent.Name == "Killers")) then
-        return false
-    end
-
-    local isKillerAttr = model:GetAttribute("Role") == "Killer" 
-        or model:GetAttribute("role") == "Killer" 
-        or model:GetAttribute("IsKiller") == true 
-        or model:GetAttribute("isKiller") == true
-    if isKillerAttr then
-        return false
-    end
-
-    local lowerName = model.Name:lower()
-    local killerNames = {"slasher", "c00lkidd", "john doe", "noli", "1x1x1x1", "guest 666", "nosferatu", "jason", "doombringer", "azure", "slenderman", "zombie king", "kool killer", "drakobloxxer", "phosphorus", "charlatan", "flowers", "guest 1458", "the masked", "the decayed", "sorcus"}
-    for _, kName in ipairs(killerNames) do
-        if lowerName == kName or lowerName:find(kName) then
-            return false
-        end
-    end
-
-    local humanoid = survivorHumanoidCache[model]
-    if not humanoid or not humanoid.Parent then
-        humanoid = model:FindFirstChildWhichIsA("Humanoid")
-        survivorHumanoidCache[model] = humanoid
-    end
-
-    if not humanoid or not humanoid.Health or humanoid.Health <= 0 then
-        return false
-    end
-
-    local hrp = survivorHrpCache[model]
-    if not hrp or not hrp.Parent then
-        hrp = model:FindFirstChild("HumanoidRootPart")
-        survivorHrpCache[model] = hrp
-    end
-    if not hrp then return false end
-
-    local player = Players:GetPlayerFromCharacter(model)
-    if player then
-        if lowerName:find("clone") or lowerName:find("npc") or lowerName:find("fake") then
-            return false
-        end
-        return true
-    end
-
-    local playersFolder = Workspace:FindFirstChild("Players")
-    if playersFolder and model.Parent == playersFolder then
-        if lowerName:find("clone") or lowerName:find("npc") or lowerName:find("fake") then
-            return false
-        end
-        return true
-    end
-
-    if lowerName:find("clone") or lowerName:find("npc") or lowerName:find("fake") then
-        return false
-    end
-
-    local survivorNames = {"twotime", "guest 1337", "dusekkar", "chance", "veeronica", "builderman", "taph", "noob", "shedletsky", "007n7", "elliot", "jane doe"}
-    for _, sName in ipairs(survivorNames) do
-        if lowerName:find(sName) then
-            return true
-        end
-    end
-
-    return false
-end
-
-local function isStrictTargetSurvivor(model)
-    if not model then return false end
-    if model == LocalPlayer.Character then return false end
-    
-    local humanoid = model:FindFirstChildWhichIsA("Humanoid")
-    if not humanoid or not humanoid.Health or humanoid.Health <= 0 then
-        return false
-    end
-    
-    local hrp = model:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
-    
-    local lowerName = model.Name:lower()
-    local player = Players:GetPlayerFromCharacter(model)
-    local lowerDisplayName = player and player.DisplayName:lower() or ""
-    
-    for _, sName in ipairs(allowedSurvivorNames) do
-        if lowerName == sName or lowerName:find(sName, 1, true) or lowerDisplayName == sName or lowerDisplayName:find(sName, 1, true) then
-            return true
-        end
-    end
-    
-    return false
-end
-
-local function updateGuiCorners(radiusValue)
-    local gui = Library and Library.ScreenGui
-    if not gui then
-        gui = game:GetService("CoreGui"):FindFirstChild("Obsidian") or game:GetService("CoreGui"):FindFirstChild("FreshLeavesSakenUI")
-    end
-    if gui then
-        for _, child in ipairs(gui:GetDescendants()) do
-            if child:IsA("UICorner") then
-                pcall(function()
-                    child.CornerRadius = UDim.new(0, radiusValue)
-                end)
-            end
-        end
-        
-        if cornerConnection then
-            cornerConnection:Disconnect()
-            cornerConnection = nil
-        end
-        
-        cornerConnection = gui.DescendantAdded:Connect(function(descendant)
-            if descendant:IsA("UICorner") then
-                task.wait()
-                pcall(function()
-                    descendant.CornerRadius = UDim.new(0, guiCornerRadius)
-                end)
-            end
-        end)
-    end
-end
-
-local cachedKillers = {}
-local lastKillersRefresh = 0
-local KILLERS_REFRESH_INTERVAL = 0.5
-
-local function updateKillersCache()
-    table_clear(killerNameCheckCache)
-    table_clear(killerHumanoidCache)
-    table_clear(killerHrpCache)
-    table_clear(cachedKillers)
-    
-    local playersFolder = Workspace:FindFirstChild("Players")
-    
-    local killersFolder = playersFolder and playersFolder:FindFirstChild("Killers")
-    if killersFolder then
-        for _, c in ipairs(killersFolder:GetChildren()) do
-            if c:IsA("Model") and c:FindFirstChild("HumanoidRootPart") then
-                table_insert(cachedKillers, c)
-            end
-        end
-    end
-    
-    local workspaceKillers = Workspace:FindFirstChild("Killers")
-    if workspaceKillers then
-        for _, c in ipairs(workspaceKillers:GetChildren()) do
-            if c:IsA("Model") and c:FindFirstChild("HumanoidRootPart") and not table_find(cachedKillers, c) then
-                table_insert(cachedKillers, c)
-            end
-        end
-    end
-
-    if playersFolder then
-        for _, c in ipairs(playersFolder:GetChildren()) do
-            if c:IsA("Model") and c ~= LocalPlayer.Character and c:FindFirstChild("HumanoidRootPart") then
-                local isKillerAttr = c:GetAttribute("Role") == "Killer" or c:GetAttribute("role") == "Killer" or c:GetAttribute("IsKiller") == true or c:GetAttribute("isKiller") == true
-                if isKillerAttr then
-                    if not table_find(cachedKillers, c) then
-                        table_insert(cachedKillers, c)
-                    end
-                end
-            end
-        end
-    end
-
-    if #cachedKillers == 0 and inMatch() then
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local charModel = p.Character
-                local isKillerAttr = charModel:GetAttribute("Role") == "Killer" 
-                    or charModel:GetAttribute("role") == "Killer" 
-                    or charModel:GetAttribute("IsKiller") == true 
-                    or charModel:GetAttribute("isKiller") == true
+            local hrp = plasmaGetTarget()
+            if hrp then
+                local rawTargetPos, isDirectAim = calculateTargetPos(hrp)
                 
-                if isKillerAttr then
-                    table_insert(cachedKillers, charModel)
-                end
-            end
-        end
-    end
-end
-
-local function getKillersList()
-    if os_clock() - lastKillersRefresh >= KILLERS_REFRESH_INTERVAL then
-        lastKillersRefresh = os_clock()
-        pcall(updateKillersCache)
-    end
-    return cachedKillers
-end
-
-local cachedSurvivors = {}
-local lastSurvivorsRefresh = 0
-local SURVIVORS_REFRESH_INTERVAL = 0.5 
-
-local function updateSurvivorsCache()
-    table_clear(survivorHumanoidCache)
-    table_clear(survivorHrpCache)
-    table_clear(cachedSurvivors)
-    
-    local killers = getKillersList()
-    local playersFolder = Workspace:FindFirstChild("Players")
-    
-    if playersFolder then
-        for _, c in ipairs(playersFolder:GetChildren()) do
-            if c:IsA("Model") and c ~= LocalPlayer.Character and c:FindFirstChild("HumanoidRootPart") then
-                if not table_find(killers, c) and isValidSurvivor(c) then
-                    table_insert(cachedSurvivors, c)
-                end
-            end
-        end
-    end
-
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local charModel = p.Character
-            if not table_find(killers, charModel) and isValidSurvivor(charModel) and not table_find(cachedSurvivors, charModel) then
-                table_insert(cachedSurvivors, charModel)
-            end
-        end
-    end
-end
-
-local function getSurvivorsList()
-    if os_clock() - lastSurvivorsRefresh >= SURVIVORS_REFRESH_INTERVAL then
-        lastSurvivorsRefresh = os_clock()
-        pcall(updateSurvivorsCache)
-    end
-    return cachedSurvivors
-end
-
-local function getItemsList()
-    return cachedItems
-end
-
-local function getGeneratorsList()
-    return cachedGenerators
-end
-
-local function getTrapsList()
-    return cachedTraps
-end
-
-local function getGeneratorProgress(gen)
-    local progressObj = gen:FindFirstChild("Progress")
-    if progressObj and (progressObj:IsA("ValueBase") or progressObj:IsA("NumberValue") or progressObj:IsA("IntValue")) then
-        return progressObj.Value
-    end
-    
-    local attr = gen:GetAttribute("Progress") or gen:GetAttribute("Percentage") or gen:GetAttribute("Percent")
-    if attr then return tonumber(attr) end
-    
-    for _, descendant in ipairs(gen:GetDescendants()) do
-        if descendant.Name == "Progress" and descendant:IsA("ValueBase") then
-            return descendant.Value
-        end
-    end
-    return 0
-end
-
-local function getProjectileTarget()
-    local targets = {}
-    local useStrict = Toggles and Toggles.StrictAimbotOnly and Toggles.StrictAimbotOnly.Value or false
-    
-    for _, survivor in ipairs(getSurvivorsList()) do
-        if useStrict then
-            if isStrictTargetSurvivor(survivor) then
-                table_insert(targets, survivor)
-            end
-        else
-            if isValidSurvivor(survivor) then
-                table_insert(targets, survivor)
-            end
-        end
-    end
-    
-    local char, _, hrp = getCharacterInfo()
-    if not hrp then return nil end
-    
-    local bestTarget = nil
-    local bestValue = math.huge
-    local targetMode = (Options and Options.ProjectileTargetMode) and Options.ProjectileTargetMode.Value or "Nearest"
-    
-    if targetMode == "Nearest" then
-        for _, t in ipairs(targets) do
-            local thrp = t:FindFirstChild("HumanoidRootPart")
-            if thrp then
-                local dist = (thrp.Position - hrp.Position).Magnitude
-                if dist < bestValue then
-                    bestValue = dist
-                    bestTarget = t
-                end
-            end
-        end
-    elseif targetMode == "Lowest" then
-        for _, t in ipairs(targets) do
-            local hum = t:FindFirstChildWhichIsA("Humanoid")
-            if hum and hum.Health > 0 then
-                if hum.Health < bestValue then
-                    bestValue = hum.Health
-                    bestTarget = t
-                end
-            end
-        end
-    elseif targetMode == "Nearest & Lowest" then
-        local closeTargets = {}
-        for _, t in ipairs(targets) do
-            local thrp = t:FindFirstChild("HumanoidRootPart")
-            local hum = t:FindFirstChildWhichIsA("Humanoid")
-            if thrp and hum and hum.Health > 0 then
-                local dist = (thrp.Position - hrp.Position).Magnitude
-                if dist <= 80 then
-                    table_insert(closeTargets, {model = t, health = hum.Health, dist = dist})
-                end
-            end
-        end
-        
-        if #closeTargets > 0 then
-            local lowestHealth = math.huge
-            for _, ct in ipairs(closeTargets) do
-                if ct.health < lowestHealth then
-                    lowestHealth = ct.health
-                    bestTarget = ct.model
-                end
-            end
-        else
-            local nearestDist = math.huge
-            for _, t in ipairs(targets) do
-                local thrp = t:FindFirstChild("HumanoidRootPart")
-                if thrp then
-                    local dist = (thrp.Position - hrp.Position).Magnitude
-                    if dist < nearestDist then
-                        nearestDist = dist
-                        bestTarget = t
-                    end
-                end
-            end
-        end
-    end
-    
-    return bestTarget
-end
-
-local function triggerProjectileAim(skillName)
-    if not Toggles or not Toggles.ProjectileAimEnabled or not Toggles.ProjectileAimEnabled.Value then return end
-    if not inMatch() then return end
-    
-    local config = skillConfigs[skillName]
-    if not config or not config.enabled then return end
-    
-    local aimDelay = (Options and Options.ProjectileAimDelay) and Options.ProjectileAimDelay.Value or 0
-    task.delay(aimDelay, function()
-        if isUnloaded or not inMatch() then return end
-        local target = getProjectileTarget()
-        if target then
-            projectileAimbotActive = true
-            projectileAimStartTime = os_clock()
-            projectileAimbotTarget = target
-            currentActiveSkill = skillName
-            
-            local _, humanoid, _ = getCharacterInfo()
-            if humanoid then
-                pcall(function() humanoid.AutoRotate = false end)
-            end
-        end
-    end)
-end
-
-local trackedProjectiles = {
-    ["mass infection"] = "Mass Infection",
-    ["massinfection"] = "Mass Infection",
-    ["corrupt energy"] = "Corrupt Energy",
-    ["corruptenergy"] = "Corrupt Energy",
-    ["entanglement"] = "Entanglement"
-}
-
-local function getButtonCooldown(btn)
-    if not btn then return nil end
-    local cd = btn:FindFirstChild("CooldownTime")
-        or btn:FindFirstChild("Cooldown")
-        or btn:FindFirstChildWhichIsA("NumberValue")
-        or btn:FindFirstChildWhichIsA("StringValue")
-    if cd then return cd end
-    local lbl = btn:FindFirstChild("CooldownLabel") or btn:FindFirstChild("Timer") or btn:FindFirstChild("CD")
-    if lbl then return lbl end
-    return nil
-end
-
-local function getTrackedAbilityButtons()
-    local buttons = {}
-    local pg = LocalPlayer:FindFirstChild("PlayerGui")
-    if not pg then return buttons end
-    local mainUI = pg:FindFirstChild("MainUI")
-    if not mainUI then return buttons end
-    local container = mainUI:FindFirstChild("AbilityContainer")
-    if not container then return buttons end
-    
-    for _, child in ipairs(container:GetChildren()) do
-        if child:IsA("GuiObject") and child.Visible then
-            local names = getButtonVisualName(child)
-            for _, name in ipairs(names) do
-                for tName, _ in pairs(trackedProjectiles) do
-                    if name == tName or name:find(tName, 1, true) then
-                        buttons[tName] = child
-                        break
-                    end
-                end
-            end
-        end
-    end
-    return buttons
-end
-
-local hookedButtons = {}
-local function updateTrackedAbilityHooks()
-    local btns = getTrackedAbilityButtons()
-    for tName, btn in pairs(btns) do
-        if btn and not hookedButtons[btn] then
-            hookedButtons[btn] = true
-            local skillName = trackedProjectiles[tName]
-            safeConnect(btn, "MouseButton1Click", function()
-                triggerProjectileAim(skillName)
-            end)
-            safeConnect(btn, "Activated", function()
-                triggerProjectileAim(skillName)
-            end)
-        end
-    end
-end
-
-UserInputService.InputBegan:Connect(function(input, processed)
-    if isUnloaded then return end
-    if not Toggles or not Toggles.ProjectileAimEnabled or not Toggles.ProjectileAimEnabled.Value then return end
-    
-    if input.UserInputType == Enum.UserInputType.Keyboard then
-        local btns = getTrackedAbilityButtons()
-        for tName, btn in pairs(btns) do
-            local hotkey = btn:FindFirstChild("Hotkey") or btn:FindFirstChild("Keybind") or btn:FindFirstChild("Key")
-            if hotkey and (hotkey:IsA("TextLabel") or hotkey:IsA("TextBox")) then
-                local txt = hotkey.Text:upper()
-                if txt ~= "" and Enum.KeyCode[txt] == input.KeyCode then
-                    local skillName = trackedProjectiles[tName]
-                    triggerProjectileAim(skillName)
-                end
-            end
-        end
-    end
-end)
-
-local function triggerAutoM1Aimbot(target)
-    if not inMatch() or autoM1AimbotActive or projectileAimbotActive then return end
-    
-    autoM1AimbotActive = true
-    autoM1AimbotStart = os_clock()
-    autoM1AimbotTarget = target
-    
-    local _, humanoid, _ = getCharacterInfo()
-    if humanoid then
-        pcall(function() humanoid.AutoRotate = true end)
-    end
-end
-
-local function tryActivateButton(btn)
-    if not btn then return false end
-    local activated = false
-
-    pcall(function()
-        if btn.Activate then 
-            btn:Activate() 
-            activated = true
-        end
-    end)
-
-    if type(getconnections) == "function" then
-        for _, event in ipairs({btn.MouseButton1Click, btn.Activated}) do
-            if event then
-                pcall(function()
-                    for _, conn in ipairs(getconnections(event)) do
-                        if conn.Function then
-                            pcall(conn.Function)
-                            activated = true
-                        elseif conn.Fire then
-                            pcall(function() conn:Fire() end)
-                            activated = true
-                        end
-                    end
-                end)
-            end
-        end
-    end
-
-    if not activated and VirtualInputManager then
-        pcall(function()
-            local absPos = btn.AbsolutePosition
-            local absSize = btn.AbsoluteSize
-            local inset = GuiService:GetGuiInset()
-            local clickX = absPos.X + (absSize.X / 2)
-            local clickY = absPos.Y + (absSize.Y / 2) + inset.Y
-            
-            VirtualInputManager:SendTouchEvent(1, 0, clickX, clickY)
-            task.wait(0.01)
-            VirtualInputManager:SendTouchEvent(1, 2, clickX, clickY)
-            
-            VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, true, game, 1)
-            task.wait(0.01)
-            VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, false, game, 1)
-            activated = true
-        end)
-    end
-
-    return activated
-end
-
-local function applyFullBright()
-    if fullBrightEnabled then
-        if Lighting.Ambient ~= Color3.fromRGB(255, 255, 255) then Lighting.Ambient = Color3.fromRGB(255, 255, 255) end
-        if Lighting.OutdoorAmbient ~= Color3.fromRGB(255, 255, 255) then Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255) end
-        if Lighting.ColorShift_Bottom ~= Color3.fromRGB(0, 0, 0) then Lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 0) end
-        if Lighting.ColorShift_Top ~= Color3.fromRGB(0, 0, 0) then Lighting.ColorShift_Top = Color3.fromRGB(0, 0, 0) end
-        if Lighting.ExposureCompensation ~= 0.5 then Lighting.ExposureCompensation = 0.5 end
-        if Lighting.GlobalShadows ~= false then Lighting.GlobalShadows = false end
-        if Lighting.Brightness ~= 2 then Lighting.Brightness = 2 end
-    else
-        if Lighting.Ambient ~= originalLightingSettings.Ambient then Lighting.Ambient = originalLightingSettings.Ambient end
-        if Lighting.OutdoorAmbient ~= originalLightingSettings.OutdoorAmbient then Lighting.OutdoorAmbient = originalLightingSettings.OutdoorAmbient end
-        if Lighting.ColorShift_Bottom ~= originalLightingSettings.ColorShift_Bottom then Lighting.ColorShift_Bottom = originalLightingSettings.ColorShift_Bottom end
-        if Lighting.ColorShift_Top ~= originalLightingSettings.ColorShift_Top then Lighting.ColorShift_Top = originalLightingSettings.ColorShift_Top end
-        if Lighting.ExposureCompensation ~= originalLightingSettings.ExposureCompensation then Lighting.ExposureCompensation = originalLightingSettings.ExposureCompensation end
-        if Lighting.GlobalShadows ~= originalLightingSettings.GlobalShadows then Lighting.GlobalShadows = originalLightingSettings.GlobalShadows end
-        if Lighting.Brightness ~= originalLightingSettings.Brightness then Lighting.Brightness = originalLightingSettings.Brightness end
-    end
-end
-
-local function applyCustomStats(stamina)
-    if not stamina then return end
-    stamina.MaxStamina = MAX_STAMINA
-    stamina.MinStamina = MIN_STAMINA
-    stamina.StaminaGain = STAMINA_GAIN
-    stamina.StaminaLoss = STAMINA_LOSS
-    stamina.SprintSpeed = SPRINT_SPEED
-    stamina.StaminaLossDisabled = INF_STAMINA
-end
-
-local function getSprintingModule()
-    if cachedSprintingModule then 
-        return cachedSprintingModule 
-    end
-    
-    local success, res = pcall(function()
-        local Sprinting = game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting
-        return require(Sprinting)
-    end)
-    
-    if success and type(res) == "table" then
-        cachedSprintingModule = res
-        return res
-    end
-    
-    local sprintingModule = nil
-    pcall(function()
-        for _, v in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-            if v:IsA("ModuleScript") and (v.Name == "Sprinting" or v.Name == "Sprint" or v.Name == "SprintingSystem") then
-                sprintingModule = v
-                break
-            end
-        end
-    end)
-    
-    if sprintingModule then
-        local ok, req = pcall(require, sprintingModule)
-        if ok and type(req) == "table" then
-            cachedSprintingModule = req
-            return req
-        end
-    end
-    
-    return nil
-end
-
-task.spawn(function()
-    local wasHelpless = false
-    while true do
-        if isUnloaded then break end
-        local isHelpless = checkHelplessStatus()
-        
-        if isHelpless and not wasHelpless then
-            print("[FLS HUB] Helpless status detected on survivor character.")
-            wasHelpless = true
-        elseif not isHelpless and wasHelpless then
-            print("[FLS HUB] Helpless status cleared. Character abilities restored.")
-            wasHelpless = false
-        end
-        task.wait(0.5)
-    end
-end)
-
-local successLoad, loadError = pcall(function()
-    local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
-    Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
-    ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
-    SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
-end)
-
-if not successLoad or not Library then
-    warn("Obsidian framework failed to initialize: " .. tostring(loadError))
-end
-
-local ui_refs = {}
-
-if Library then
-    Library.ForceCheckbox = false
-    Library.ShowToggleFrameInKeybinds = true
-
-    Window = Library:CreateWindow({
-        Title = "FlsSaken||Official",
-        Footer = "FreshLeavesSaken • Indigo Framework",
-        NotifySide = "Right",
-        ShowCustomCursor = true,
-    })
-
-    pcall(function()
-        Library:SetDPIScale(75)
-    end)
-
-    task.spawn(function()
-        local titleLabel = nil
-        for i = 1, 20 do
-            if not Library.ScreenGui then task.wait(0.05) continue end
-            for _, desc in ipairs(Library.ScreenGui:GetDescendants()) do
-                if desc:IsA("TextLabel") and desc.Text == "FlsSaken||Official" then
-                    titleLabel = desc
-                    break
-                end
-            end
-            if titleLabel then break end
-            task.wait(0.05)
-        end
-
-        if titleLabel then
-            local topbar = titleLabel.Parent
-            if topbar then
-                local titleDecal = Instance.new("ImageLabel")
-                titleDecal.Name = "TitleDecalIcon"
-                titleDecal.BackgroundTransparency = 1
-                titleDecal.Image = "rbxassetid://71081229545579"
-                titleDecal.Size = UDim2.fromOffset(18, 18)
-                titleDecal.Position = UDim2.new(0, 8, 0.5, -9)
-                titleDecal.Parent = topbar
-
-                titleLabel.Position = UDim2.new(0, 30, titleLabel.Position.Y.Scale, titleLabel.Position.Y.Offset)
-
-                local discordBtn = Instance.new("ImageButton")
-                discordBtn.Name = "DiscordTopRightButton"
-                discordBtn.BackgroundTransparency = 1
-                discordBtn.Image = "rbxassetid://15243171358"
-                discordBtn.ImageColor3 = HUDColors.WatermarkAccent
-                discordBtn.Size = UDim2.fromOffset(16, 16)
-                discordBtn.ZIndex = titleLabel.ZIndex + 5
-
-                local rightOffset = -28
-                for _, child in ipairs(topbar:GetChildren()) do
-                    if (child:IsA("ImageButton") or child:IsA("TextButton")) and child.Name ~= "DiscordTopRightButton" then
-                        if child.Position.X.Scale >= 0.8 then
-                            local offset = child.Position.X.Offset
-                            if offset < rightOffset then
-                                rightOffset = offset - 22
-                            end
-                        end
-                    end
-                end
-
-                discordBtn.Position = UDim2.new(1, rightOffset, 0.5, -8)
-                discordBtn.Parent = topbar
-
-                titleLabel.Size = UDim2.new(1, rightOffset - 35, 1, 0)
-                titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
-
-                discordBtn.MouseButton1Click:Connect(function()
-                    if copyToClipboard(DISCORD_INVITE) then
-                        notify("Discord Invite Copied", "Link copied to clipboard! Paste it into your browser.", 5)
-                    else
-                        notify("Discord Server Invite", DISCORD_INVITE, 10)
-                    end
-                end)
-
-                discordBtn.MouseEnter:Connect(function()
-                    discordBtn.ImageColor3 = Color3.fromRGB(180, 155, 255)
-                end)
-                discordBtn.MouseLeave:Connect(function()
-                    discordBtn.ImageColor3 = HUDColors.WatermarkAccent
-                end)
-            end
-        end
-    end)
-
-    Tabs = {
-        Main = Window:AddTab("Main", "alert-circle"),
-        Combat = Window:AddTab("Gameplay", "swords"),
-        Killer = Window:AddTab("Killer", "skull"),
-        Visuals = Window:AddTab("Visuals", "eye"),
-        ["UI Settings"] = Window:AddTab("Settings", "settings"),
-    }
-
-    ---------------------------------------------------------
-    -- MAIN TAB SETUP
-    ---------------------------------------------------------
-    local MainLeftGroup = Tabs.Main:AddLeftGroupbox("Community & Hub Banner")
-    local MainRightGroup = Tabs.Main:AddRightGroupbox("Credits & Development")
-
-    local logoFrame = Instance.new("Frame")
-    logoFrame.Name = "FLS_BannerFrame"
-    logoFrame.Size = UDim2.new(1, 0, 0, 140)
-    logoFrame.BackgroundTransparency = 1
-    logoFrame.BorderSizePixel = 0
-    logoFrame.Parent = MainLeftGroup.Container
-
-    local logoImg = Instance.new("ImageLabel")
-    logoImg.Name = "FLS_BannerImage"
-    logoImg.Size = UDim2.new(1, 0, 1, 0)
-    logoImg.BackgroundTransparency = 1
-    logoImg.Image = "rbxassetid://72407443718889"
-    logoImg.ScaleType = Enum.ScaleType.Crop
-    logoImg.Parent = logoFrame
-
-    local logoCorner = Instance.new("UICorner")
-    logoCorner.CornerRadius = UDim.new(0, 6)
-    logoCorner.Parent = logoImg
-
-    task.spawn(function()
-        local imageFileName = "FLS_Logo_FreshLeaves.png"
-        local downloaded = false
-
-        if writefile and getcustomasset then
-            pcall(function()
-                if not isfile or not isfile(imageFileName) then
-                    local data = game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/assets/banner.png")
-                    if data and #data > 100 then
-                        writefile(imageFileName, data)
-                    end
-                end
-                if isfile and isfile(imageFileName) then
-                    logoImg.Image = getcustomasset(imageFileName)
-                    downloaded = true
-                end
-            end)
-        end
-
-        if not downloaded or logoImg.Image == "" then
-            logoImg.Image = "rbxassetid://72407443718889" 
-        end
-    end)
-
-    MainLeftGroup:AddDivider()
-
-    MainLeftGroup:AddButton("Copy Discord Server Invite", function()
-        if copyToClipboard(DISCORD_INVITE) then
-            notify("Discord Server", "Server invite link copied to clipboard!", 5)
-        else
-            notify("Discord Server", DISCORD_INVITE, 8)
-        end
-    end)
-
-    ---------------------------------------------------------
-    -- CREDITS SECTION
-    ---------------------------------------------------------
-    local ownerHeader = MainRightGroup:AddLabel("PROJECT OWNER:", true)
-    local ownerName = MainRightGroup:AddLabel("FreshTropicalLeaves", true)
-    local ownerSub = MainRightGroup:AddLabel("(The one who made almost everything)", true)
-
-    pcall(function()
-        if ownerHeader and ownerHeader.TextLabel then
-            ownerHeader.TextLabel.TextColor3 = Color3.fromRGB(255, 65, 65)
-            ownerHeader.TextLabel.Font = Enum.Font.SourceSansBold
-        end
-        if ownerName and ownerName.TextLabel then
-            ownerName.TextLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-            ownerName.TextLabel.Font = Enum.Font.SourceSansBold
-            ownerName.TextLabel.TextSize = 15
-        end
-        if ownerSub and ownerSub.TextLabel then
-            ownerSub.TextLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            ownerSub.TextLabel.TextWrapped = true
-        end
-    end)
-
-    MainRightGroup:AddDivider()
-
-    local logoHeader = MainRightGroup:AddLabel("GRAPHICS & LOGO:", true)
-    local logoName = MainRightGroup:AddLabel("Christiana Amane", true)
-    local logoSub = MainRightGroup:AddLabel("(The one who made the logo)", true)
-
-    pcall(function()
-        if logoHeader and logoHeader.TextLabel then
-            logoHeader.TextLabel.TextColor3 = Color3.fromRGB(180, 180, 220)
-            logoHeader.TextLabel.Font = Enum.Font.SourceSansBold
-        end
-        if logoName and logoName.TextLabel then
-            logoName.TextLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
-            logoName.TextLabel.Font = Enum.Font.SourceSansBold
-        end
-        if logoSub and logoSub.TextLabel then
-            logoSub.TextLabel.TextColor3 = Color3.fromRGB(160, 160, 180)
-            logoSub.TextLabel.TextWrapped = true
-            logoSub.TextLabel.TextTruncate = Enum.TextTruncate.AtEnd
-        end
-    end)
-
-    ---------------------------------------------------------
-    -- GAMEPLAY / KILLER / VISUALS / SETTINGS SETUP
-    ---------------------------------------------------------
-    local CombatGroup = Tabs.Combat:AddLeftGroupbox("Stamina Engine")
-    local KillerGroup = Tabs.Killer:AddLeftGroupbox("Auto Melee (M1) System")
-    local ProjectileGroup = Tabs.Killer:AddRightGroupbox("Projectile Aimbot (CA-Aim)")
-    local VisualsLeftGroup = Tabs.Visuals:AddLeftGroupbox("ESP Visuals & Overlays")
-
-    CombatGroup:AddToggle("EnStaminaMod", {
-        Text = "Custom Stamina Logic",
-        Tooltip = "Overrides sprinting system parameters.",
-        Default = false,
-        Callback = function(Value)
-            staminaEnabled = Value
-            if staminaEnabled then
-                local stamina = getSprintingModule()
-                if stamina then pcall(applyCustomStats, stamina) end
-            end
-        end,
-    })
-
-    CombatGroup:AddToggle("InfStam", {
-        Text = "Unlimited Stamina",
-        Tooltip = "Completely disables stamina consumption.",
-        Default = true,
-        Callback = function(Value)
-            INF_STAMINA = Value
-            if staminaEnabled then
-                local stamina = getSprintingModule()
-                if stamina then pcall(applyCustomStats, stamina) end
-            end
-        end,
-    })
-
-    CombatGroup:AddInput("MaxStaminaVal", {
-        Text = "Maximum Stamina",
-        Default = tostring(MAX_STAMINA),
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "100",
-        Callback = function(Value)
-            MAX_STAMINA = tonumber(Value) or 100
-            if staminaEnabled then
-                local stamina = getSprintingModule()
-                if stamina then pcall(applyCustomStats, stamina) end
-            end
-        end,
-    })
-
-    CombatGroup:AddInput("MinStaminaVal", {
-        Text = "Minimum Threshold",
-        Default = tostring(MIN_STAMINA),
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "-20",
-        Callback = function(Value)
-            MIN_STAMINA = tonumber(Value) or -20
-            if staminaEnabled then
-                local stamina = getSprintingModule()
-                if stamina then pcall(applyCustomStats, stamina) end
-            end
-        end,
-    })
-
-    CombatGroup:AddInput("StaminaGainVal", {
-        Text = "Regeneration Rate",
-        Default = tostring(STAMINA_GAIN),
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "100",
-        Callback = function(Value)
-            STAMINA_GAIN = tonumber(Value) or 100
-            if staminaEnabled then
-                local stamina = getSprintingModule()
-                if stamina then pcall(applyCustomStats, stamina) end
-            end
-        end,
-    })
-
-    CombatGroup:AddInput("StaminaLossVal", {
-        Text = "Depletion Rate",
-        Default = tostring(STAMINA_LOSS),
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "5",
-        Callback = function(Value)
-            STAMINA_LOSS = tonumber(Value) or 5
-            if staminaEnabled then
-                local stamina = getSprintingModule()
-                if stamina then pcall(applyCustomStats, stamina) end
-            end
-        end,
-    })
-
-    CombatGroup:AddInput("SprintSpeedVal", {
-        Text = "Sprint Velocity",
-        Default = tostring(SPRINT_SPEED),
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "40",
-        Callback = function(Value)
-            SPRINT_SPEED = tonumber(Value) or 40
-            if staminaEnabled then
-                local stamina = getSprintingModule()
-                if stamina then pcall(applyCustomStats, stamina) end
-            end
-        end,
-    })
-
-    KillerGroup:AddToggle("AutoM1Toggle", {
-        Text = "Enable Auto M1",
-        Tooltip = "Automatically targets and executes melee strikes on nearby survivors.",
-        Default = false,
-        Callback = function(Value)
-            autoM1Enabled = Value
-        end,
-    })
-
-    KillerGroup:AddToggle("AutoM1VisualizerToggle", {
-        Text = "Field Visualizer",
-        Tooltip = "Displays target range circle and angle FOV cone lines.",
-        Default = true,
-        Callback = function(Value)
-            autoM1VisualizerEnabled = Value
-        end,
-    })
-
-    KillerGroup:AddSlider("AutoM1Range", {
-        Text = "Targeting Distance",
-        Default = 5,
-        Min = 1,
-        Max = 20,
-        Rounding = 1,
-        Tooltip = "Maximum detection distance for melee strikes.",
-        Callback = function(Value)
-            autoM1Range = tonumber(Value) or 5
-        end,
-    })
-
-    KillerGroup:AddSlider("AutoM1ConeAngle", {
-        Text = "Scan Angle Cone",
-        Default = 90,
-        Min = 1,
-        Max = 180,
-        Rounding = 0,
-        Suffix = "°",
-        Tooltip = "Frontal detection window constraint angle.",
-        Callback = function(Value)
-            autoM1ConeAngle = tonumber(Value) or 90
-        end,
-    })
-
-    KillerGroup:AddInput("AutoM1AimDuration", {
-        Text = "Lock Duration",
-        Default = "1.5",
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "e.g., 1.5",
-        Callback = function(Value)
-            autoM1AimDuration = tonumber(Value) or 1.5
-        end,
-    })
-
-    KillerGroup:AddSlider("AutoM1MaxPrediction", {
-        Text = "Prediction Lead Time",
-        Default = 0.2,
-        Min = 0,
-        Max = 1,
-        Rounding = 2,
-        Suffix = "s",
-        Tooltip = "Target movement velocity tracking offset.",
-        Callback = function(Value)
-            autoM1MaxPrediction = tonumber(Value) or 0.2
-        end,
-    })
-
-    KillerGroup:AddSlider("AutoM1AimSpeed", {
-        Text = "Rotation Speed",
-        Default = 15,
-        Min = 1,
-        Max = 50,
-        Rounding = 1,
-        Tooltip = "Camera alignment smoothing speed toward target.",
-        Callback = function(Value)
-            autoM1AimSpeed = tonumber(Value) or 15
-        end,
-    })
-
-    ProjectileGroup:AddToggle("ProjectileAimEnabled", {
-        Text = "Enable Projectile Aim",
-        Tooltip = "Locks rotation toward target entity upon triggering projectile abilities.",
-        Default = false,
-    })
-
-    ProjectileGroup:AddToggle("StrictAimbotOnly", {
-        Text = "Strict Target Filter",
-        Tooltip = "Only locks onto explicitly whitelisted target names.",
-        Default = false,
-    })
-
-    ProjectileGroup:AddDropdown("ProjectileTargetMode", {
-        Values = { "Nearest", "Lowest", "Nearest & Lowest" },
-        Default = "Nearest",
-        Text = "Target Priority System",
-        Tooltip = "Priority sorting conditions for projectile aimbot.",
-    })
-
-    ProjectileGroup:AddToggle("ProjectileVelocityPrediction", {
-        Text = "Velocity Lead Prediction",
-        Tooltip = "Calculates motion velocity vectors to lead moving targets.",
-        Default = true,
-    })
-
-    ProjectileGroup:AddSlider("ProjectileAimDelay", {
-        Text = "Activation Delay",
-        Default = 0,
-        Min = 0,
-        Max = 3,
-        Rounding = 2,
-        Suffix = "s",
-        Tooltip = "Delay before rotation lock is initiated.",
-    })
-
-    ProjectileGroup:AddDivider()
-    ProjectileGroup:AddLabel("Mass Infection")
-    ProjectileGroup:AddToggle("MassInfectionEnabled", {
-        Text = "Mass Infection Aim",
-        Default = true,
-        Callback = function(Value)
-            skillConfigs["Mass Infection"].enabled = Value
-        end,
-    })
-    ProjectileGroup:AddSlider("MassInfectionDuration", {
-        Text = "Lock Duration",
-        Default = 1.25,
-        Min = 0.1,
-        Max = 5,
-        Rounding = 2,
-        Suffix = "s",
-        Callback = function(Value)
-            skillConfigs["Mass Infection"].duration = tonumber(Value) or 1.25
-        end,
-    })
-    ProjectileGroup:AddSlider("MassInfectionSpeed", {
-        Text = "Rotation Speed",
-        Default = 35,
-        Min = 1,
-        Max = 100,
-        Rounding = 1,
-        Callback = function(Value)
-            skillConfigs["Mass Infection"].speed = tonumber(Value) or 35
-        end,
-    })
-    ProjectileGroup:AddSlider("MassInfectionPrediction", {
-        Text = "Prediction Strength",
-        Default = 0.2,
-        Min = 0,
-        Max = 2,
-        Rounding = 2,
-        Suffix = "s",
-        Callback = function(Value)
-            skillConfigs["Mass Infection"].prediction = tonumber(Value) or 0.2
-        end,
-    })
-
-    ProjectileGroup:AddDivider()
-    ProjectileGroup:AddLabel("Entanglement")
-    ProjectileGroup:AddToggle("EntanglementEnabled", {
-        Text = "Entanglement Aim",
-        Default = true,
-        Callback = function(Value)
-            skillConfigs["Entanglement"].enabled = Value
-        end,
-    })
-    ProjectileGroup:AddSlider("EntanglementDuration", {
-        Text = "Lock Duration",
-        Default = 0.65,
-        Min = 0.1,
-        Max = 5,
-        Rounding = 2,
-        Suffix = "s",
-        Callback = function(Value)
-            skillConfigs["Entanglement"].duration = tonumber(Value) or 0.65
-        end,
-    })
-    ProjectileGroup:AddSlider("EntanglementSpeed", {
-        Text = "Rotation Speed",
-        Default = 35,
-        Min = 1,
-        Max = 100,
-        Rounding = 1,
-        Callback = function(Value)
-            skillConfigs["Entanglement"].speed = tonumber(Value) or 35
-        end,
-    })
-    ProjectileGroup:AddSlider("EntanglementPrediction", {
-        Text = "Prediction Strength",
-        Default = 0.2,
-        Min = 0,
-        Max = 2,
-        Rounding = 2,
-        Suffix = "s",
-        Callback = function(Value)
-            skillConfigs["Entanglement"].prediction = tonumber(Value) or 0.2
-        end,
-    })
-
-    ProjectileGroup:AddDivider()
-    ProjectileGroup:AddLabel("Corrupt Energy")
-    ProjectileGroup:AddToggle("CorruptEnergyEnabled", {
-        Text = "Corrupt Energy Aim",
-        Default = true,
-        Callback = function(Value)
-            skillConfigs["Corrupt Energy"].enabled = Value
-        end,
-    })
-    ProjectileGroup:AddSlider("CorruptEnergyDuration", {
-        Text = "Lock Duration",
-        Default = 0.65,
-        Min = 0.1,
-        Max = 5,
-        Rounding = 2,
-        Suffix = "s",
-        Callback = function(Value)
-            skillConfigs["Corrupt Energy"].duration = tonumber(Value) or 0.65
-        end,
-    })
-    ProjectileGroup:AddSlider("CorruptEnergySpeed", {
-        Text = "Rotation Speed",
-        Default = 35,
-        Min = 1,
-        Max = 100,
-        Rounding = 1,
-        Callback = function(Value)
-            skillConfigs["Corrupt Energy"].speed = tonumber(Value) or 35
-        end,
-    })
-    ProjectileGroup:AddSlider("CorruptEnergyPrediction", {
-        Text = "Prediction Strength",
-        Default = 0.2,
-        Min = 0,
-        Max = 2,
-        Rounding = 2,
-        Suffix = "s",
-        Callback = function(Value)
-            skillConfigs["Corrupt Energy"].prediction = tonumber(Value) or 0.2
-        end,
-    })
-
-    VisualsLeftGroup:AddToggle("KillerHighlight", {
-        Text = "Killer Visuals",
-        Tooltip = "Highlight and outline killer entities.",
-        Default = false,
-        Callback = function(Value)
-            visualKillerHighlightEnabled = Value
-        end,
-    }):AddColorPicker("KillerHighlightColor", {
-        Default = Color3.fromRGB(255, 0, 0),
-        Title = "Killer Accent Color",
-        Callback = function(Value)
-            killerHighlightColor = Value
-        end
-    })
-
-    VisualsLeftGroup:AddInput("KillerOutlineTransparency", {
-        Text = "Outline Transparency",
-        Default = "0.5",
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "0.5",
-        Callback = function(Value)
-            visualKillerOutlineTransparency = tonumber(Value) or 0.5
-            for _, hl in pairs(killerHighlights) do
-                if hl then hl.OutlineTransparency = visualKillerOutlineTransparency end
-            end
-        end,
-    })
-
-    VisualsLeftGroup:AddInput("KillerFillTransparency", {
-        Text = "Fill Transparency",
-        Default = "0.85",
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "0.85",
-        Callback = function(Value)
-            visualKillerFillTransparency = tonumber(Value) or 0.85
-            for _, hl in pairs(killerHighlights) do
-                if hl then hl.FillTransparency = visualKillerFillTransparency end
-            end
-        end
-    })
-
-    VisualsLeftGroup:AddDivider()
-
-    VisualsLeftGroup:AddToggle("SurvivorHighlight", {
-        Text = "Survivor Visuals",
-        Tooltip = "Highlight and outline survivor entities.",
-        Default = false,
-        Callback = function(Value)
-            visualSurvivorHighlightEnabled = Value
-        end,
-    }):AddColorPicker("SurvivorHighlightColor", {
-        Default = Color3.fromRGB(0, 255, 0),
-        Title = "Survivor Accent Color",
-        Callback = function(Value)
-            survivorHighlightColor = Value
-        end
-    })
-
-    VisualsLeftGroup:AddInput("SurvivorOutlineTransparency", {
-        Text = "Outline Transparency",
-        Default = "0.5",
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "0.5",
-        Callback = function(Value)
-            visualSurvivorOutlineTransparency = tonumber(Value) or 0.5
-            for _, hl in pairs(survivorHighlights) do
-                if hl then hl.OutlineTransparency = visualSurvivorOutlineTransparency end
-            end
-        end,
-    })
-
-    VisualsLeftGroup:AddInput("SurvivorFillTransparency", {
-        Text = "Fill Transparency",
-        Default = "0.85",
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "0.85",
-        Callback = function(Value)
-            visualSurvivorFillTransparency = tonumber(Value) or 0.85
-            for _, hl in pairs(survivorHighlights) do
-                if hl then hl.FillTransparency = visualSurvivorFillTransparency end
-            end
-        end
-    })
-
-    VisualsLeftGroup:AddDivider()
-
-    VisualsLeftGroup:AddToggle("ItemsHighlight", {
-        Text = "Item Visuals",
-        Tooltip = "Highlight and outline dropped items (Medkits, Cola).",
-        Default = false,
-        Callback = function(Value)
-            visualItemsHighlightEnabled = Value
-        end,
-    }):AddColorPicker("ItemsHighlightColor", {
-        Default = Color3.fromRGB(255, 255, 0),
-        Title = "Item Accent Color",
-        Callback = function(Value)
-            itemsHighlightColor = Value
-        end
-    })
-
-    VisualsLeftGroup:AddInput("ItemsOutlineTransparency", {
-        Text = "Outline Transparency",
-        Default = "0.5",
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "0.5",
-        Callback = function(Value)
-            visualItemsOutlineTransparency = tonumber(Value) or 0.5
-            for _, hl in pairs(itemHighlights) do
-                if hl then hl.OutlineTransparency = visualItemsOutlineTransparency end
-            end
-        end,
-    })
-
-    VisualsLeftGroup:AddInput("ItemsFillTransparency", {
-        Text = "Fill Transparency",
-        Default = "0.85",
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "0.85",
-        Callback = function(Value)
-            visualItemsFillTransparency = tonumber(Value) or 0.85
-            for _, hl in pairs(itemHighlights) do
-                if hl then hl.FillTransparency = visualItemsFillTransparency end
-            end
-        end
-    })
-
-    VisualsLeftGroup:AddDivider()
-
-    VisualsLeftGroup:AddToggle("GeneratorsHighlight", {
-        Text = "Generator Visuals",
-        Tooltip = "Highlight and outline generator objectives.",
-        Default = false,
-        Callback = function(Value)
-            visualGeneratorsHighlightEnabled = Value
-        end,
-    }):AddColorPicker("GeneratorsHighlightColor", {
-        Default = Color3.fromRGB(0, 255, 255),
-        Title = "Generator Accent Color",
-        Callback = function(Value)
-            generatorsHighlightColor = Value
-        end
-    })
-
-    VisualsLeftGroup:AddToggle("ShowGenPercentage", {
-        Text = "Progress HUD Label",
-        Tooltip = "Displays floating progress percentage labels above generators.",
-        Default = false,
-        Callback = function(Value)
-            visualGeneratorsShowPercentageEnabled = Value
-        end,
-    })
-
-    VisualsLeftGroup:AddInput("GeneratorsOutlineTransparency", {
-        Text = "Outline Transparency",
-        Default = "0.5",
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "0.5",
-        Callback = function(Value)
-            visualGeneratorsOutlineTransparency = tonumber(Value) or 0.5
-            for _, hl in pairs(generatorHighlights) do
-                if hl then hl.OutlineTransparency = visualGeneratorsOutlineTransparency end
-            end
-        end,
-    })
-
-    VisualsLeftGroup:AddInput("GeneratorsFillTransparency", {
-        Text = "Fill Transparency",
-        Default = "0.85",
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "0.85",
-        Callback = function(Value)
-            visualGeneratorsFillTransparency = tonumber(Value) or 0.85
-            for _, hl in pairs(generatorHighlights) do
-                if hl then hl.FillTransparency = visualGeneratorsFillTransparency end
-            end
-        end
-    })
-
-    VisualsLeftGroup:AddDivider()
-
-    VisualsLeftGroup:AddToggle("TrapsHighlight", {
-        Text = "Trap Visuals",
-        Tooltip = "Highlight and outline traps and deployables.",
-        Default = false,
-        Callback = function(Value)
-            visualTrapsHighlightEnabled = Value
-        end,
-    }):AddColorPicker("TrapsHighlightColor", {
-        Default = Color3.fromRGB(255, 100, 0),
-        Title = "Trap Accent Color",
-        Callback = function(Value)
-            trapsHighlightColor = Value
-        end
-    })
-
-    VisualsLeftGroup:AddDropdown("TrapFilter", {
-        Values = { "Tripwires", "Subspace Tripmine", "Digital Footprints", "Seekers", "Lightbulbs", "Stigmatize" },
-        Default = { "Tripwires", "Subspace Tripmine", "Digital Footprints", "Seekers", "Lightbulbs", "Stigmatize" },
-        Multi = true,
-        Text = "Targeted Trap Types",
-        Tooltip = "Select which trap types to target and highlight.",
-    })
-
-    VisualsLeftGroup:AddInput("TrapsOutlineTransparency", {
-        Text = "Outline Transparency",
-        Default = "0.5",
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "0.5",
-        Callback = function(Value)
-            visualTrapsOutlineTransparency = tonumber(Value) or 0.5
-            for _, hl in pairs(trapHighlights) do
-                if hl then hl.OutlineTransparency = visualTrapsOutlineTransparency end
-            end
-        end,
-    })
-
-    VisualsLeftGroup:AddInput("TrapsFillTransparency", {
-        Text = "Fill Transparency",
-        Default = "0.85",
-        Numeric = true,
-        ClearTextOnFocus = false,
-        Placeholder = "0.85",
-        Callback = function(Value)
-            visualTrapsFillTransparency = tonumber(Value) or 0.85
-            for _, hl in pairs(trapHighlights) do
-                if hl then hl.FillTransparency = visualTrapsFillTransparency end
-            end
-        end
-    })
-
-    VisualsLeftGroup:AddDivider()
-
-    VisualsLeftGroup:AddToggle("FullBrightToggle", {
-        Text = "Full Brightness",
-        Tooltip = "Overrides environment lighting for full map visibility.",
-        Default = false,
-        Callback = function(Value)
-            fullBrightEnabled = Value
-            pcall(applyFullBright)
-        end,
-    })
-
-    Options = Library.Options
-    Toggles = Library.Toggles
-
-    ui_refs.Library = Library
-    ui_refs.Window = Window
-    ui_refs.Options = Options
-    ui_refs.Toggles = Toggles
-
-    local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Interface Preferences", "wrench")
-    local ThemeCustomGroup = Tabs["UI Settings"]:AddRightGroupbox("Custom UI & HUD Theme Colors")
-
-    ThemeCustomGroup:AddLabel("Watermark Accent Color"):AddColorPicker("WatermarkAccentColor", {
-        Default = HUDColors.WatermarkAccent,
-        Title = "Watermark Accent Color",
-        Callback = function(Value)
-            HUDColors.WatermarkAccent = Value
-            if HUDRefs.WMAccent then HUDRefs.WMAccent.BackgroundColor3 = Value end
-        end
-    })
-
-    ThemeCustomGroup:AddLabel("HUD Outline Color"):AddColorPicker("HUDOutlineColor", {
-        Default = HUDColors.HUDOutline,
-        Title = "HUD Outline Color",
-        Callback = function(Value)
-            HUDColors.HUDOutline = Value
-            if HUDRefs.WMStroke then HUDRefs.WMStroke.Color = Value end
-            if HUDRefs.TargetStroke then HUDRefs.TargetStroke.Color = Value end
-        end
-    })
-
-    ThemeCustomGroup:AddLabel("HUD Font / Text Color"):AddColorPicker("HUDTextColor", {
-        Default = HUDColors.HUDTextColor,
-        Title = "HUD Font / Text Color",
-        Callback = function(Value)
-            HUDColors.HUDTextColor = Value
-            if HUDRefs.WMLabel then HUDRefs.WMLabel.TextColor3 = Value end
-            if HUDRefs.TargetInfo then HUDRefs.TargetInfo.TextColor3 = Value end
-        end
-    })
-
-    ThemeCustomGroup:AddLabel("HUD Background Color"):AddColorPicker("HUDBackgroundColor", {
-        Default = HUDColors.HUDBackground,
-        Title = "HUD Background Color",
-        Callback = function(Value)
-            HUDColors.HUDBackground = Value
-            if HUDRefs.WatermarkFrame then HUDRefs.WatermarkFrame.BackgroundColor3 = Value end
-            if HUDRefs.TargetHUD then HUDRefs.TargetHUD.BackgroundColor3 = Value end
-        end
-    })
-
-    ThemeCustomGroup:AddLabel("Target HUD Accent Color"):AddColorPicker("TargetHUDAccentColor", {
-        Default = HUDColors.TargetHUDAccent,
-        Title = "Target HUD Accent Color",
-        Callback = function(Value)
-            HUDColors.TargetHUDAccent = Value
-            if HUDRefs.TargetTitle then HUDRefs.TargetTitle.TextColor3 = Value end
-        end
-    })
-
-    ThemeCustomGroup:AddLabel("Visualizer Range Color"):AddColorPicker("VisualizerColorPicker", {
-        Default = HUDColors.VisualizerColor,
-        Title = "Visualizer Range Color",
-        Callback = function(Value)
-            HUDColors.VisualizerColor = Value
-            if autoM1Circle then autoM1Circle.Color3 = Value end
-            if leftConeLine then leftConeLine.Color3 = Value end
-            if rightConeLine then rightConeLine.Color3 = Value end
-        end
-    })
-
-    MenuGroup:AddToggle("KeybindMenuOpen", {
-        Default = Library.KeybindFrame.Visible,
-        Text = "Keybind Overlay",
-        Callback = function(value)
-            Library.KeybindFrame.Visible = value
-        end,
-    })
-    MenuGroup:AddToggle("ShowCustomCursor", {
-        Text = "Custom Crosshair Cursor",
-        Default = true,
-        Callback = function(Value)
-            Library.ShowCustomCursor = Value
-        end,
-    })
-    MenuGroup:AddDropdown("NotificationSide", {
-        Values = { "Left", "Right" },
-        Default = "Right",
-        Text = "Notification Screen Placement",
-        Callback = function(Value)
-            pcall(function() Library:SetNotifySide(Value) end)
-        end,
-    })
-    MenuGroup:AddDropdown("DPIDropdown", {
-        Values = { "75%" },
-        Default = "75%",
-        Text = "UI Scale (DPI)",
-        Callback = function(Value)
-            pcall(function() Library:SetDPIScale(75) end)
-        end,
-    })
-
-    MenuGroup:AddSlider("GuiCornerRadius", {
-        Text = "Corner Roundness",
-        Default = 8,
-        Min = 0,
-        Max = 20,
-        Rounding = 0,
-        Tooltip = "Adjust GUI corner roundness.",
-        Callback = function(Value)
-            guiCornerRadius = tonumber(Value) or 8
-            pcall(updateGuiCorners, guiCornerRadius)
-        end,
-    })
-
-    MenuGroup:AddDivider()
-    MenuGroup:AddLabel("Toggle Menu Key"):AddKeyPicker("MenuKeybind", { Default = "RightShift", NoUI = true, Text = "Menu Keybind" })
-
-    MenuGroup:AddButton("Unload Interface", function()
-        isUnloaded = true
-        disconnectCacheConnections()
-        if cornerConnection then
-            pcall(function() cornerConnection:Disconnect() end)
-            cornerConnection = nil
-        end
-        if autoM1Connection then
-            pcall(function() autoM1Connection:Disconnect() end)
-            autoM1Connection = nil
-        end
-        if heartbeatAlignmentConnection then
-            pcall(function() heartbeatAlignmentConnection:Disconnect() end)
-            heartbeatAlignmentConnection = nil
-        end
-        if leftConeLine then pcall(function() leftConeLine:Destroy() end) end
-        if rightConeLine then pcall(function() rightConeLine:Destroy() end) end
-        if autoM1Circle then pcall(function() autoM1Circle:Destroy() end) end
-        for _, hl in pairs(killerHighlights) do
-            if hl then pcall(function() hl:Destroy() end) end
-        end
-        for _, hl in pairs(survivorHighlights) do
-            if hl then pcall(function() hl:Destroy() end) end
-        end
-        for _, hl in pairs(itemHighlights) do
-            if hl then pcall(function() hl:Destroy() end) end
-        end
-        for _, hl in pairs(generatorHighlights) do
-            if hl then pcall(function() hl:Destroy() end) end
-        end
-        for _, hl in pairs(trapHighlights) do
-            if hl then pcall(function() hl:Destroy() end) end
-        end
-        for _, gui in pairs(generatorPercentGuis) do
-            if gui then pcall(function() gui:Destroy() end) end
-        end
-        table_clear(generatorPercentGuis)
-        table_clear(trapHighlights)
-        Library:Unload()
-    end)
-
-    _G.FreshLeavesSakenUI = _G.FreshLeavesSakenUI or {}
-    _G.FreshLeavesSakenUI.refs = ui_refs
-
-    Library.ToggleKeybind = Options.MenuKeybind
-    
-    if ThemeManager then
-        pcall(function()
-            ThemeManager:SetLibrary(Library)
-            ThemeManager:SetFolder("FreshLeavesSaken")
-            if Tabs and Tabs["UI Settings"] then
-                ThemeManager:ApplyToTab(Tabs["UI Settings"])
-            end
-        end)
-    end
-
-    if SaveManager then
-        pcall(function()
-            SaveManager:SetLibrary(Library)
-            SaveManager:IgnoreThemeSettings()
-            SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
-            SaveManager:SetFolder("FreshLeavesSaken/games")
-            SaveManager:SetSubFolder("Forsaken")
-            if Tabs and Tabs["UI Settings"] then
-                SaveManager:BuildConfigSection(Tabs["UI Settings"])
-            end
-            SaveManager:LoadAutoloadConfig()
-        end)
-    end
-    
-    task.spawn(function()
-        task.wait(0.5)
-        pcall(updateGuiCorners, guiCornerRadius)
-        pcall(function() Library:SetDPIScale(75) end)
-    end)
-end
-
-heartbeatAlignmentConnection = RunService.Heartbeat:Connect(function(dt)
-    if isUnloaded then return end
-    
-    if autoM1AimbotActive and autoM1AimbotTarget and autoM1AimbotTarget.Parent then
-        local elapsed = os_clock() - autoM1AimbotStart
-        local aimDur = autoM1AimDuration
-        
-        if elapsed >= aimDur or not inMatch() then
-            autoM1AimbotActive = false
-            autoM1AimbotTarget = nil
-            local _, humanoid, _ = getCharacterInfo()
-            if humanoid then
-                pcall(function() humanoid.AutoRotate = true end)
-            end
-            return
-        end
-        
-        local char, humanoid, hrp = getCharacterInfo()
-        local khrp = autoM1AimbotTarget:FindFirstChild("HumanoidRootPart")
-        if hrp and khrp then
-            local predictedKPos = khrp.Position
-            if autoM1MaxPrediction > 0 then
-                local vel = khrp.AssemblyLinearVelocity or khrp.Velocity
-                if vel and vel.Magnitude > 0.1 then
-                    predictedKPos = khrp.Position + (vel * autoM1MaxPrediction)
-                end
-            end
-            
-            local targetLook = vector3_new(predictedKPos.X, hrp.Position.Y, predictedKPos.Z)
-            if (targetLook - hrp.Position).Magnitude > 0.001 then
-                local targetRotation = cframe_lookAt(hrp.Position, targetLook) - hrp.Position
-                local alpha = (autoM1AimSpeed >= 50) and 1 or (1 - math.exp(-autoM1AimSpeed * dt))
-                hrp.CFrame = hrp.CFrame:Lerp(cframe_new(hrp.Position) * targetRotation, alpha)
-            end
-        end
-    end
-
-    if projectileAimbotActive then
-        if not inMatch() then
-            projectileAimbotActive = false
-            projectileAimbotTarget = nil
-            currentActiveSkill = nil
-            local _, humanoid, _ = getCharacterInfo()
-            if humanoid then pcall(function() humanoid.AutoRotate = true end) end
-        else
-            local config = skillConfigs[currentActiveSkill] or { duration = 0.65, speed = 35, prediction = 0.2 }
-            local elapsed = os_clock() - projectileAimStartTime
-            local aimDur = config.duration
-            
-            if not projectileAimbotTarget or not projectileAimbotTarget.Parent then
-                projectileAimbotTarget = getProjectileTarget()
-            else
-                local hum = projectileAimbotTarget:FindFirstChildWhichIsA("Humanoid")
-                if not hum or hum.Health <= 0 then
-                    projectileAimbotTarget = getProjectileTarget()
-                end
-            end
-
-            if elapsed >= aimDur or not projectileAimbotTarget then
-                projectileAimbotActive = false
-                projectileAimbotTarget = nil
-                currentActiveSkill = nil
-                local _, humanoid, _ = getCharacterInfo()
-                if humanoid then
-                    pcall(function() humanoid.AutoRotate = true end)
-                end
-            else
-                local char, humanoid, hrp = getCharacterInfo()
-                if humanoid then
-                    pcall(function() humanoid.AutoRotate = false end)
-                end
-                
-                local thrp = projectileAimbotTarget:FindFirstChild("HumanoidRootPart")
-                if hrp and thrp then
-                    local predictedPos = thrp.Position
-                    local useVelocity = Toggles and Toggles.ProjectileVelocityPrediction and Toggles.ProjectileVelocityPrediction.Value
-                    
-                    if useVelocity then
-                        local vel = thrp.AssemblyLinearVelocity or thrp.Velocity
-                        if vel and vel.Magnitude > 0.05 then
-                            local distance = (thrp.Position - hrp.Position).Magnitude
-                            local projSpeed = config.speed or 35
-                            local travelTime = distance / (projSpeed > 0 and projSpeed or 35)
-                            local predScale = config.prediction or 1.0
-                            local predTime = travelTime * predScale
-                            predictedPos = thrp.Position + (vel * predTime)
-                        end
-                    end
-                    
-                    local targetLook = vector3_new(predictedPos.X, hrp.Position.Y, predictedPos.Z)
-                    if (targetLook - hrp.Position).Magnitude > 0.001 then
-                        local targetRotation = cframe_lookAt(hrp.Position, targetLook) - hrp.Position
-                        local aimSpeed = config.speed or 35
-                        local alpha = (aimSpeed >= 100) and 1 or (1 - math.exp(-aimSpeed * dt))
-                        hrp.CFrame = hrp.CFrame:Lerp(cframe_new(hrp.Position) * targetRotation, alpha)
-                    end
-                end
-            end
-        end
-    end
-end)
-
-task.spawn(function()
-    while true do
-        task.wait(0.02)
-        if isUnloaded then break end
-        if not Toggles or not Toggles.ProjectileAimEnabled or not Toggles.ProjectileAimEnabled.Value then continue end
-        
-        pcall(function()
-            updateTrackedAbilityHooks()
-            local btns = getTrackedAbilityButtons()
-            for tName, btn in pairs(btns) do
-                local cdObj = getButtonCooldown(btn)
-                if cdObj then
-                    local cdVal = readCooldownValue(cdObj) or 0
-                    local prevState = previousCooldownStates[btn] or 0
-                    
-                    if (cdVal - prevState) > 1 then
-                        local skillName = trackedProjectiles[tName]
-                        triggerProjectileAim(skillName)
-                    end
-                    previousCooldownStates[btn] = cdVal
+                local targetModel = hrp.Parent
+                local originPart = targetModel and (targetModel:FindFirstChild("Torso") or targetModel:FindFirstChild("UpperTorso") or hrp)
+                local originPos = originPart and (originPart.Position + Vector3.new(0, plasma_aimOffset, 0)) or hrp.Position
+
+                if hrp ~= lastTargetHRP or not currentPredictedPos or isDirectAim then
+                    currentPredictedPos = rawTargetPos
+                    lastTargetHRP = hrp
                 else
-                    previousCooldownStates[btn] = 0
+                    if plasma_predictionSpeed >= 9.8 then
+                        currentPredictedPos = rawTargetPos
+                    else
+                        local lerpRate = plasma_predictionSpeed * 12.0
+                        local lerpAlpha = math.clamp(dt * lerpRate, 0.02, 1.0)
+                        currentPredictedPos = currentPredictedPos:Lerp(rawTargetPos, lerpAlpha)
+                    end
                 end
+
+                if currentPredictedPos and currentPredictedPos.X == currentPredictedPos.X then
+                    updatePredictionVisuals(currentPredictedPos, originPos)
+                end
+            else
+                currentPredictedPos = nil
+                lastTargetHRP = nil
+                destroyPredictionVisuals()
             end
         end)
     end
-end)
 
-autoM1Connection = RunService.Heartbeat:Connect(function()
-    if isUnloaded then
-        if autoM1Connection then
-            pcall(function() autoM1Connection:Disconnect() end)
-            autoM1Connection = nil
+    local function stopVisualizer()
+        if renderConnection then
+            renderConnection:Disconnect()
+            renderConnection = nil
         end
-        return
+        currentPredictedPos = nil
+        lastTargetHRP = nil
+        destroyPredictionVisuals()
     end
 
-    if autoM1AimbotActive or projectileAimbotActive then return end
+    local function updateTargetBoxVisuals(button)
+        if not button then return end
+        if plasma_targetType == "Survivors" then
+            button.Text = "Target: Survivor"
+            button.TextColor3 = Color3.fromRGB(129, 140, 248)
+        else
+            button.Text = "Target: Killer"
+            button.TextColor3 = Color3.fromRGB(248, 113, 113)
+        end
+    end
 
-    if not autoM1Enabled then return end
-    if isM1OnCooldownCached() then return end
-    if not inMatch() then return end
-    if checkHelplessStatus() then return end
+    local function syncTargetBoxVisuals()
+        if targetBoxGui then
+            local button = targetBoxGui:FindFirstChildOfClass("TextButton")
+            if button then updateTargetBoxVisuals(button) end
+        end
+    end
 
-    local m1Btn = getM1Button()
-    if m1Btn then
-        local char, humanoid, hrp = getCharacterInfo()
-        if hrp and humanoid then
-            local survivors = getSurvivorsList()
-            for _, survivor in pairs(survivors) do
-                if isValidSurvivor(survivor) then
-                    local khrp = survivor:FindFirstChild("HumanoidRootPart")
-                    if khrp then
-                        local dist = (khrp.Position - hrp.Position).Magnitude
-                        if dist <= autoM1Range then
-                            local relative = khrp.Position - hrp.Position
-                            local rel2d = vector3_new(relative.X, 0, relative.Z)
-                            local frontVec = hrp.CFrame.LookVector
-                            local front2d = vector3_new(frontVec.X, 0, frontVec.Z)
-                            local passesCone = false
+    local function destroyTargetBox()
+        if targetBoxGui then
+            targetBoxGui:Destroy()
+            targetBoxGui = nil
+        end
+    end
 
-                            if rel2d.Magnitude > 0.001 and front2d.Magnitude > 0.001 then
-                                local dot = rel2d.Unit:Dot(front2d.Unit)
-                                local angleRad = math.acos(math_clamp(dot, -1, 1))
-                                local angleDeg = math_deg(angleRad)
-                                if angleDeg <= (autoM1ConeAngle or 90) then
-                                    passesCone = true
-                                end
-                            end
+    local function createTargetBox()
+        destroyTargetBox()
 
-                            if passesCone then
-                                triggerAutoM1Aimbot(survivor)
-                                tryActivateButton(m1Btn)
-                                break
-                            end
-                        end
-                    end
-                end
+        local parent = getGuiParent()
+        if not parent then return end
+
+        targetBoxGui = Instance.new("ScreenGui")
+        targetBoxGui.Name = "TargetBoxChangerGui"
+        targetBoxGui.ResetOnSpawn = false
+        targetBoxGui.Parent = parent
+
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.fromOffset(140, 35)
+        button.Position = UDim2.new(1, -150, 0, 70)
+        button.BackgroundColor3 = Color3.fromHex("#181829")
+        button.BorderSizePixel = 0
+        button.Font = Enum.Font.GothamBold
+        button.TextSize = 13
+        button.Parent = targetBoxGui
+
+        local uiCorner = Instance.new("UICorner")
+        uiCorner.CornerRadius = UDim.new(0, 8)
+        uiCorner.Parent = button
+
+        local uiStroke = Instance.new("UIStroke")
+        uiStroke.Color = Color3.fromHex("#4338CA")
+        uiStroke.Thickness = 1.5
+        uiStroke.Parent = button
+
+        updateTargetBoxVisuals(button)
+
+        button.MouseButton1Click:Connect(function()
+            if plasma_targetType == "Killers" then
+                plasma_targetType = "Survivors"
+            else
+                plasma_targetType = "Killers"
             end
-        end
+            updateTargetBoxVisuals(button)
+            saveConfig()
+        end)
     end
-end)
 
-local function renderVisualizers()
-    if isUnloaded then return end
+    local function plasmaUnpatch()
+        if plasma_rf then rfDispatch:uninstall(plasma_rf) end
+        plasma_rf = nil
+        stopVisualizer()
+        destroyTargetBox()
+    end
     
-    local char, _, hrp = getCharacterInfo()
-    local active = autoM1Enabled and autoM1VisualizerEnabled and inMatch() and hrp
+    LocalPlayer.CharacterAdded:Connect(function() 
+        plasma_motionData = {} 
+        lastTargetHRP = nil
+    end)
+
+    sec_027:Toggle({
+        Title = "Enable PlasmaBeam Aim", Default = plasma_enabled, Type = "Checkbox", Flag = "plasmaEnabled",
+        Callback = function(on) 
+            plasma_enabled = on 
+            if on then startVisualizer() else stopVisualizer() end
+            saveConfig()
+        end
+    })
+
+    sec_027:Toggle({
+        Title = "Ignore NPCs / Bots", Default = plasma_ignoreNPCs, Type = "Checkbox", Flag = "plasmaIgnoreNPCs",
+        Callback = function(on) plasma_ignoreNPCs = on; saveConfig() end
+    })
+
+    sec_027:Toggle({
+        Title = "Ping & Lag Auto-Detection", Default = plasma_pingDetection, Type = "Checkbox", Flag = "plasmaPingDetection",
+        Callback = function(on) plasma_pingDetection = on; saveConfig() end
+    })
+
+    sec_027:Dropdown({
+        Title = "Target Priority", Values = {"Nearest", "LowestHp", "LowestHp&Nearest"}, Default = plasma_targetSelectionMode, Flag = "plasmaTargetSelectionMode",
+        Callback = function(v) plasma_targetSelectionMode = v; saveConfig() end
+    })
+
+    sec_027:Dropdown({
+        Title = "Target Type", Values = {"Killers", "Survivors"}, Default = plasma_targetType, Flag = "plasmaTargetType",
+        Callback = function(v) 
+            plasma_targetType = v 
+            syncTargetBoxVisuals()
+            saveConfig()
+        end
+    })
+
+    sec_027:Toggle({
+        Title = "TargetBoxChanger Widget", Default = targetBoxEnabled, Type = "Checkbox", Flag = "targetBoxChanger",
+        Callback = function(on)
+            targetBoxEnabled = on
+            if on then createTargetBox() else destroyTargetBox() end
+            saveConfig()
+        end
+    })
+
+    sec_027:Toggle({
+        Title = "Protect Through Walls", Default = plasma_throughWalls, Type = "Checkbox", Flag = "plasmaThroughWalls",
+        Callback = function(on) plasma_throughWalls = on; saveConfig() end
+    })
     
-    if active then
-        if not autoM1Circle then
-            autoM1Circle = Instance.new("CylinderHandleAdornment")
-            autoM1Circle.Height = 0.02
-            autoM1Circle.Color3 = HUDColors.VisualizerColor
-            autoM1Circle.Transparency = 0.55
-            autoM1Circle.ZIndex = 10
-            autoM1Circle.AlwaysOnTop = true
-            autoM1Circle.Parent = Workspace:FindFirstChild("Terrain") or Workspace
+    sec_027:Slider({
+        Title = "Prediction (s)", Flag = "plasmaPrediction", Value = {Min=0.0, Max=1.0, Default=plasma_prediction}, Step = 0.01,
+        Callback = function(v) plasma_prediction = v; saveConfig() end
+    })
+
+    sec_027:Slider({
+        Title = "Prediction Speed Multiplier", Flag = "plasmaPredictionSpeed", Value = {Min=0.1, Max=10.0, Default=plasma_predictionSpeed}, Step = 0.1,
+        Callback = function(v) plasma_predictionSpeed = v; saveConfig() end
+    })
+    
+    sec_027:Slider({
+        Title = "Aim Height Offset", Flag = "plasmaAimOffset", Value = {Min=-5.0, Max=5.0, Default=plasma_aimOffset}, Step = 0.1,
+        Callback = function(v) plasma_aimOffset = v; saveConfig() end
+    })
+
+    local sec_sphere = tabDusekkar:Section({ Title = "PredictedSphere & Line Config", Opened = true })
+
+    sec_sphere:Toggle({
+        Title = "Enable Visualizer Sphere", Default = sphere_visualsEnabled, Type = "Checkbox", Flag = "sphereVisualsEnabled",
+        Callback = function(on)
+            sphere_visualsEnabled = on
+            if not on then destroyPredictionVisuals() end
+            saveConfig()
         end
-        autoM1Circle.Adornee = hrp
-        autoM1Circle.Radius = autoM1Range
-        autoM1Circle.Color3 = HUDColors.VisualizerColor
-        autoM1Circle.CFrame = cframe_new(0, -hrp.Size.Y/2, 0) * CFrame.Angles(math_rad(90), 0, 0)
-        autoM1Circle.Visible = true
+    })
 
-        if not leftConeLine then
-            leftConeLine = Instance.new("LineHandleAdornment")
-            leftConeLine.Color3 = HUDColors.VisualizerColor
-            leftConeLine.Thickness = 3
-            leftConeLine.ZIndex = 10
-            leftConeLine.AlwaysOnTop = true
-            leftConeLine.Parent = Workspace:FindFirstChild("Terrain") or Workspace
-        end
-        leftConeLine.Adornee = hrp
-        leftConeLine.Length = autoM1Range
-        leftConeLine.Color3 = HUDColors.VisualizerColor
-        leftConeLine.CFrame = CFrame.Angles(0, math_rad(180 + autoM1ConeAngle / 2), 0)
-        leftConeLine.Visible = true
-
-        if not rightConeLine then
-            rightConeLine = Instance.new("LineHandleAdornment")
-            rightConeLine.Color3 = HUDColors.VisualizerColor
-            rightConeLine.Thickness = 3
-            rightConeLine.ZIndex = 10
-            rightConeLine.AlwaysOnTop = true
-            rightConeLine.Parent = Workspace:FindFirstChild("Terrain") or Workspace
-        end
-        rightConeLine.Adornee = hrp
-        rightConeLine.Length = autoM1Range
-        rightConeLine.Color3 = HUDColors.VisualizerColor
-        rightConeLine.CFrame = CFrame.Angles(0, math_rad(180 - autoM1ConeAngle / 2), 0)
-        rightConeLine.Visible = true
-    else
-        if autoM1Circle then autoM1Circle.Visible = false end
-        if leftConeLine then leftConeLine.Visible = false end
-        if rightConeLine then rightConeLine.Visible = false end
-    end
-end
-
-RunService.RenderStepped:Connect(renderVisualizers)
-
-local function clearKillerHighlights()
-    for model, hl in pairs(killerHighlights) do
-        if hl then pcall(function() hl:Destroy() end) end
-    end
-    table_clear(killerHighlights)
-end
-
-local function clearSurvivorHighlights()
-    for model, hl in pairs(survivorHighlights) do
-        if hl then pcall(function() hl:Destroy() end) end
-    end
-    table_clear(survivorHighlights)
-end
-
-local function clearItemHighlights()
-    for model, hl in pairs(itemHighlights) do
-        if hl then pcall(function() hl:Destroy() end) end
-    end
-    table_clear(itemHighlights)
-end
-
-local function clearGeneratorHighlights()
-    for model, hl in pairs(generatorHighlights) do
-        if hl then pcall(function() hl:Destroy() end) end
-    end
-    table_clear(generatorHighlights)
-end
-
-local function clearTrapHighlights()
-    for model, hl in pairs(trapHighlights) do
-        if hl then pcall(function() hl:Destroy() end) end
-    end
-    table_clear(trapHighlights)
-end
-
-local function clearGeneratorPercentGuis()
-    for model, gui in pairs(generatorPercentGuis) do
-        if gui then pcall(function() gui:Destroy() end) end
-    end
-    table_clear(generatorPercentGuis)
-end
-
-local function updateKillerHighlights()
-    if not visualKillerHighlightEnabled then
-        clearKillerHighlights()
-        return
-    end
-
-    local killers = getKillersList()
-    for _, killer in ipairs(killers) do
-        if isValidKillerModel(killer) then
-            local hl = killerHighlights[killer]
-            if not hl or not hl.Parent then
-                hl = Instance.new("Highlight")
-                hl.OutlineColor = killerHighlightColor
-                hl.OutlineTransparency = visualKillerOutlineTransparency
-                hl.FillColor = killerHighlightColor
-                hl.FillTransparency = visualKillerFillTransparency
-                hl.Adornee = killer
-                hl.Parent = killer
-                killerHighlights[killer] = hl
-            else
-                hl.OutlineColor = killerHighlightColor
-                hl.FillColor = killerHighlightColor
-                hl.OutlineTransparency = visualKillerOutlineTransparency
-                hl.FillTransparency = visualKillerFillTransparency
+    sec_sphere:Toggle({
+        Title = "Enable Connecting Cylinder", Default = cylinder_visualsEnabled, Type = "Checkbox", Flag = "cylinderVisualsEnabled",
+        Callback = function(on)
+            cylinder_visualsEnabled = on
+            if not on and visualCylinder then
+                visualCylinder:Destroy()
+                visualCylinder = nil
             end
+            saveConfig()
+        end
+    })
+
+    sec_sphere:Colorpicker({
+        Title = "Visuals Color", Default = sphere_color, Flag = "sphereColor",
+        Callback = function(color) sphere_color = color; saveConfig() end
+    })
+
+    sec_sphere:Input({
+        Title = "Sphere Size", Default = tostring(sphere_size), Placeholder = "Enter size (e.g. 1.0)", Flag = "sphereSize",
+        Callback = function(text)
+            local num = tonumber(text)
+            if num then sphere_size = num; saveConfig() end
+        end
+    })
+
+    sec_sphere:Input({
+        Title = "Cylinder Thickness", Default = tostring(cylinder_thickness), Placeholder = "Enter thickness (e.g. 0.2)", Flag = "cylinderThickness",
+        Callback = function(text)
+            local num = tonumber(text)
+            if num then cylinder_thickness = num; saveConfig() end
+        end
+    })
+
+    sec_sphere:Input({
+        Title = "Transparency", Default = tostring(sphere_transparency), Placeholder = "Enter opacity (0 to 1)", Flag = "sphereTransparency",
+        Callback = function(text)
+            local num = tonumber(text)
+            if num then sphere_transparency = math.clamp(num, 0, 1); saveConfig() end
+        end
+    })
+
+    local sphereMaterials = {"SmoothPlastic", "Neon", "ForceField", "Glass", "Plastic", "Wood", "Metal"}
+    sec_sphere:Dropdown({
+        Title = "Material", Values = sphereMaterials, Default = sphere_material.Name, Flag = "sphereMaterial",
+        Callback = function(selectedMaterial)
+            local success, matEnum = pcall(function() return Enum.Material[selectedMaterial] end)
+            if success and matEnum then sphere_material = matEnum; saveConfig() end
+        end
+    })
+
+    local sec_028 = tabDusekkar:Section({ Title = "Control", Opened = true })
+    sec_028:Button({
+        Title = "Unload PlasmaBeam Hook", Callback = function()
+            plasma_enabled = false; plasmaUnpatch()
+        end
+    })
+
+    local function getRemoteFunction()
+        local storage = RobloxServices.ReplicatedStorage
+        local modules = storage:WaitForChild("Modules", 5)
+        if not modules then return nil end
+        local net1 = modules:WaitForChild("Network", 5)
+        if not net1 then return nil end
+        local net2 = net1:WaitForChild("Network", 5)
+        if not net2 then return nil end
+        return net2:WaitForChild("RemoteFunction", 5)
+    end
+
+    local function plasmaPatch()
+        local rf = getRemoteFunction()
+        if not rf then warn("[dusekkar] Shared RF not found"); return end
+        
+        plasma_rf = rf
+        rfDispatch:install(rf)
+        
+        rfDispatch:register("plasma", function(reqName, ...)
+            if reqName ~= "GetMousePosition" or not plasma_enabled then return nil end
+            
+            if currentPredictedPos and currentPredictedPos.X == currentPredictedPos.X then
+                return currentPredictedPos
+            end
+
+            local hrp = plasmaGetTarget()
+            if not hrp then return nil end
+            
+            local rawTargetPos = calculateTargetPos(hrp)
+            return rawTargetPos
+        end)
+
+        if plasma_enabled then
+            startVisualizer()
+            if targetBoxEnabled then createTargetBox() end
         end
     end
 
-    for model, hl in pairs(killerHighlights) do
-        if not model or not model.Parent or not table_find(killers, model) or not isValidKillerModel(model) then
-            if hl then pcall(function() hl:Destroy() end) end
-            killerHighlights[model] = nil
-        end
-    end
+    task.spawn(plasmaPatch)
 end
 
-local function updateSurvivorHighlights()
-    if not visualSurvivorHighlightEnabled then
-        clearSurvivorHighlights()
-        return
-    end
+-- Global Config & Unload System Tab
+local sec_system = tabPlayer:Section({ Title = "Configuration & System" })
 
-    local survivors = getSurvivorsList()
-    for _, survivor in ipairs(survivors) do
-        if isValidSurvivor(survivor) then
-            local hl = survivorHighlights[survivor]
-            if not hl or not hl.Parent then
-                hl = Instance.new("Highlight")
-                hl.OutlineColor = survivorHighlightColor
-                hl.OutlineTransparency = visualSurvivorOutlineTransparency
-                hl.FillColor = survivorHighlightColor
-                hl.FillTransparency = visualSurvivorFillTransparency
-                hl.Adornee = survivor
-                hl.Parent = survivor
-                survivorHighlights[survivor] = hl
-            else
-                hl.OutlineColor = survivorHighlightColor
-                hl.FillColor = survivorHighlightColor
-                hl.OutlineTransparency = visualSurvivorOutlineTransparency
-                hl.FillTransparency = visualSurvivorFillTransparency
-            end
+sec_system:Button({
+    Title = "Save Configuration",
+    Callback = function()
+        saveConfig()
+        WindUI:Notify({ Title = "Config Saved", Content = "Your settings have been saved locally.", Duration = 3 })
+    end
+})
+
+sec_system:Button({
+    Title = "Load Last Configuration",
+    Callback = function()
+        loadConfig()
+        WindUI:Notify({ Title = "Config Loaded", Content = "Your settings have been reloaded.", Duration = 3 })
+    end
+})
+
+sec_system:Button({
+    Title = "Unload Script Completely",
+    Callback = function()
+        saveConfig()
+
+        stamStop()
+        speedStop()
+        stopKillerScanLoop()
+        disableFpsBooster()
+
+        local storage = RobloxServices.ReplicatedStorage
+        local modules = storage:FindFirstChild("Modules")
+        local net1 = modules and modules:FindFirstChild("Network")
+        local net2 = net1 and net1:FindFirstChild("Network")
+        local rf = net2 and net2:FindFirstChild("RemoteFunction")
+
+        if rf then rfDispatch:uninstall(rf) end
+        
+        for model, _ in pairs(killerHighlights) do
+            removeKillerVisuals(model)
         end
-    end
+        
+        local guiParent = getGuiParent()
+        local targetBox = guiParent and guiParent:FindFirstChild("TargetBoxChangerGui")
+        if targetBox then pcall(function() targetBox:Destroy() end) end
+        
+        local sphere = RobloxServices.Workspace:FindFirstChild("PredictionSphere")
+        if sphere then pcall(function() sphere:Destroy() end) end
 
-    for model, hl in pairs(survivorHighlights) do
-        if not model or not model.Parent or not table_find(survivors, model) or not isValidSurvivor(model) then
-            if hl then pcall(function() hl:Destroy() end) end
-            survivorHighlights[model] = nil
-        end
+        local cylinder = RobloxServices.Workspace:FindFirstChild("PredictionCylinder")
+        if cylinder then pcall(function() cylinder:Destroy() end) end
+        
+        pcall(function() Window:Destroy() end)
     end
-end
-
-local function updateItemHighlights()
-    if not visualItemsHighlightEnabled then
-        clearItemHighlights()
-        return
-    end
-
-    local items = getItemsList()
-    for _, item in ipairs(items) do
-        if not isItemEquipped(item) then
-            local hl = itemHighlights[item]
-            if not hl or not hl.Parent then
-                hl = Instance.new("Highlight")
-                hl.OutlineColor = itemsHighlightColor
-                hl.OutlineTransparency = visualItemsOutlineTransparency
-                hl.FillColor = itemsHighlightColor
-                hl.FillTransparency = visualItemsFillTransparency
-                hl.Adornee = item
-                hl.Parent = item
-                itemHighlights[item] = hl
-            else
-                hl.OutlineColor = itemsHighlightColor
-                hl.FillColor = itemsHighlightColor
-                hl.OutlineTransparency = visualItemsOutlineTransparency
-                hl.FillTransparency = visualItemsFillTransparency
-            end
-        else
-            local hl = itemHighlights[item]
-            if hl then
-                pcall(function() hl:Destroy() end)
-                itemHighlights[item] = nil
-            end
-        end
-    end
-
-    for model, hl in pairs(itemHighlights) do
-        if not model or not model.Parent or not table_find(items, model) or isItemEquipped(model) then
-            if hl then pcall(function() hl:Destroy() end) end
-            itemHighlights[model] = nil
-        end
-    end
-end
-
-local function updateGeneratorHighlights()
-    if not visualGeneratorsHighlightEnabled then
-        clearGeneratorHighlights()
-        return
-    end
-
-    local generators = getGeneratorsList()
-    for _, generator in ipairs(generators) do
-        local hl = generatorHighlights[generator]
-        if not hl or not hl.Parent then
-            hl = Instance.new("Highlight")
-            hl.OutlineColor = generatorsHighlightColor
-            hl.OutlineTransparency = visualGeneratorsOutlineTransparency
-            hl.FillColor = generatorsHighlightColor
-            hl.FillTransparency = visualGeneratorsFillTransparency
-            hl.Adornee = generator
-            hl.Parent = generator
-            generatorHighlights[generator] = hl
-        else
-            hl.OutlineColor = generatorsHighlightColor
-            hl.FillColor = generatorsHighlightColor
-            hl.OutlineTransparency = visualGeneratorsOutlineTransparency
-            hl.FillTransparency = visualGeneratorsFillTransparency
-        end
-    end
-
-    for model, hl in pairs(generatorHighlights) do
-        if not model or not model.Parent or not table_find(generators, model) then
-            if hl then pcall(function() hl:Destroy() end) end
-            generatorHighlights[model] = nil
-        end
-    end
-end
-
-local function updateTrapHighlights()
-    if not visualTrapsHighlightEnabled then
-        clearTrapHighlights()
-        return
-    end
-
-    local traps = getTrapsList()
-    for _, trap in ipairs(traps) do
-        if isTrapValid(trap) then
-            local hl = trapHighlights[trap]
-            if not hl or not hl.Parent then
-                hl = Instance.new("Highlight")
-                hl.OutlineColor = trapsHighlightColor
-                hl.OutlineTransparency = visualTrapsOutlineTransparency
-                hl.FillColor = trapsHighlightColor
-                hl.FillTransparency = visualTrapsFillTransparency
-                hl.Adornee = trap
-                hl.Parent = trap
-                trapHighlights[trap] = hl
-            else
-                hl.OutlineColor = trapsHighlightColor
-                hl.FillColor = trapsHighlightColor
-                hl.OutlineTransparency = visualTrapsOutlineTransparency
-                hl.FillTransparency = visualTrapsFillTransparency
-            end
-        else
-            local hl = trapHighlights[trap]
-            if hl then
-                pcall(function() hl:Destroy() end)
-                trapHighlights[trap] = nil
-            end
-        end
-    end
-
-    for model, hl in pairs(trapHighlights) do
-        if not model or not model.Parent or not table_find(traps, model) or not isTrapValid(model) then
-            if hl then pcall(function() hl:Destroy() end) end
-            trapHighlights[model] = nil
-        end
-    end
-end
-
-local function updateGeneratorPercentGuis()
-    if not visualGeneratorsHighlightEnabled or not visualGeneratorsShowPercentageEnabled then
-        clearGeneratorPercentGuis()
-        return
-    end
-
-    local generators = getGeneratorsList()
-    for _, generator in ipairs(generators) do
-        if generator and generator.Parent then
-            local primaryPart = generator.PrimaryPart or generator:FindFirstChildWhichIsA("BasePart")
-            if primaryPart then
-                local gui = generatorPercentGuis[generator]
-                if not gui or not gui.Parent then
-                    gui = Instance.new("BillboardGui")
-                    gui.Name = "GeneratorPercentGui"
-                    gui.Size = UDim2.new(0, 100, 0, 30)
-                    gui.AlwaysOnTop = true
-                    gui.StudsOffset = Vector3.new(0, 4, 0)
-                    
-                    local label = Instance.new("TextLabel")
-                    label.Name = "PercentLabel"
-                    label.Size = UDim2.new(1, 0, 1, 0)
-                    label.BackgroundTransparency = 1
-                    label.TextColor3 = generatorsHighlightColor
-                    label.TextSize = 14
-                    label.Font = Enum.Font.SourceSansBold
-                    label.TextStrokeTransparency = 0
-                    label.TextStrokeColor3 = Color3.new(0, 0, 0)
-                    label.Parent = gui
-                    
-                    gui.Adornee = primaryPart
-                    gui.Parent = generator
-                    generatorPercentGuis[generator] = gui
-                end
-                
-                local pct = math.floor(getGeneratorProgress(generator))
-                local label = gui:FindFirstChild("PercentLabel")
-                if label then
-                    label.Text = string.format("%d%%", pct)
-                    label.TextColor3 = generatorsHighlightColor
-                end
-            end
-        end
-    end
-
-    for model, gui in pairs(generatorPercentGuis) do
-        if not model or not model.Parent or not table_find(generators, model) then
-            if gui then pcall(function() gui:Destroy() end) end
-            generatorPercentGuis[model] = nil
-        end
-    end
-end
-
-pcall(initialCacheScan)
-pcall(setupCacheListeners)
-
-task.spawn(function()
-    while true do
-        task.wait(0.2)
-        if isUnloaded then
-            clearKillerHighlights()
-            clearSurvivorHighlights()
-            clearItemHighlights()
-            clearGeneratorHighlights()
-            clearGeneratorPercentGuis()
-            clearTrapHighlights()
-            break
-        end
-        pcall(updateKillerHighlights)
-        pcall(updateSurvivorHighlights)
-        pcall(updateItemHighlights)
-        pcall(updateGeneratorHighlights)
-        pcall(updateGeneratorPercentGuis)
-        pcall(updateTrapHighlights)
-    end
-end)
-
-task.spawn(function()
-    while true do
-        task.wait(0.5)
-        if isUnloaded then break end
-        if staminaEnabled and inMatch() then
-            pcall(function()
-                local stamina = getSprintingModule()
-                if stamina then
-                    applyCustomStats(stamina)
-                end
-            end)
-        end
-    end
-end)
-
-task.spawn(function()
-    while true do
-        task.wait(1)
-        if isUnloaded then break end
-        if fullBrightEnabled then
-            pcall(applyFullBright)
-        end
-    end
-end)
+})
